@@ -159,3 +159,26 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 
 **Not covered**
 - No screen-reader pass with VoiceOver or NVDA. Names, descriptions and live regions were checked structurally, not listened to.
+
+## Phase 5: Deploy (2026-10-20)
+
+**Done**
+- **Hosting:** a public GitHub repo (`j-hargrove/drift-detector`) and a Vercel project connected through the Git integration. Pushes to `main` deploy to production at https://drift-detector-psi.vercel.app.
+- **README:** what the tool is and why, the four steps, a demo walkthrough, the four file formats with examples, running locally, structure, deploy and accessibility notes. The JSON examples were run through `checkFile` and `createSession`, so what's documented is exactly what loads.
+
+**`vercel.json`, verified against the real deploy** (build log and live responses)
+- The build cloned `main` at the pushed commit. The install and build steps ran the no-op `echo` commands, and the build finished in 191ms. `node_modules` was never installed: `/node_modules/...` returns 404.
+- `.vercelignore` is honoured for Git deployments, not just CLI uploads. The build log lists the removed tests and screenshots.
+- Content types are correct: the four `data/*.json` files are `application/json` and every ES module is `application/javascript`. A browser refuses to run a module served as `text/plain`, so this is the check that matters for a no-build site.
+- **Found:** `CLAUDE.md`, `BUILD_LOG.md` and `.gitignore` were being served from the site root. They're public on GitHub anyway, but they aren't part of the site, so they're now in `.vercelignore` along with the README and lockfile. `package.json` was already excluded by Vercel. `vercel.json` itself stays deployable; it's config, not content.
+
+**Production checks**
+- The full browser suite was run against the production URL: screenshots of five states at 1280px and 390px, plus the 25-check keyboard walkthrough. Results are identical to local. The demo data loads (3 review cards, 2 auto-absorbed entries). File loading, validation errors and the empty state all work, with no console errors and no sideways scroll.
+
+**Decisions**
+- **Public repo:** asked and confirmed. It's a portfolio piece, so the code is part of what's being shown.
+- **Small fix:** `vercel link` added `.vercel` to `.gitignore`, duplicating an existing `.vercel/` line. Removed.
+
+**Not done**
+- No custom domain; the site uses Vercel's generated `drift-detector-psi.vercel.app`.
+- Preview deployments for other branches use Vercel's defaults, which may require a Vercel login to view. Production is public.
