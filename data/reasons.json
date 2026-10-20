@@ -1,0 +1,6 @@
+{
+  "dev-001": "Marketing's Figma frame uses #3B82F6 for the hero CTA. color.primary (#2563EB) looked noticeably darker next to the hero image, so I matched the mock.",
+  "dev-003": "Icon-only buttons looked cramped at spacing.2 and oversized at spacing.3. 10px centres a 20px icon in a 40px target.",
+  "dev-004": "Matched the 6px gap in the toolbar screenshot attached to the ticket.",
+  "dev-005": "Delete account needs a destructive treatment. The contract has no destructive variant, and secondary reads as a safe action."
+}

@@ -1,0 +1,63 @@
+{
+  "name": "Acme UI",
+  "version": "1.0.0",
+  "tokens": {
+    "color": {
+      "primary": "#2563EB",
+      "primary-hover": "#1D4ED8",
+      "surface": "#FFFFFF",
+      "text": "#111827",
+      "text-muted": "#6B7280",
+      "border": "#E5E7EB",
+      "danger": "#DC2626"
+    },
+    "spacing": {
+      "1": "4px",
+      "2": "8px",
+      "3": "12px",
+      "4": "16px",
+      "6": "24px"
+    },
+    "radius": {
+      "sm": "4px",
+      "md": "8px",
+      "full": "9999px"
+    }
+  },
+  "component": {
+    "name": "Button",
+    "variants": [
+      "primary",
+      "secondary",
+      "ghost"
+    ],
+    "states": [
+      "default",
+      "hover",
+      "focus",
+      "disabled"
+    ],
+    "sizes": [
+      "sm",
+      "md",
+      "lg"
+    ],
+    "allowedTokens": {
+      "color": [
+        "color.primary",
+        "color.primary-hover",
+        "color.surface",
+        "color.text",
+        "color.border"
+      ],
+      "spacing": [
+        "spacing.2",
+        "spacing.3",
+        "spacing.4"
+      ],
+      "radius": [
+        "radius.md"
+      ]
+    }
+  }
+}

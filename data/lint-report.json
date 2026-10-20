@@ -1,0 +1,45 @@
+{
+  "generatedAt": "2026-10-19T09:12:00.000Z",
+  "deviations": [
+    {
+      "id": "dev-001",
+      "rule": "no-hardcoded-color",
+      "file": "src/components/Button.tsx",
+      "line": 18,
+      "snippet": "background-color: #3B82F6;",
+      "suggestedToken": "color.primary"
+    },
+    {
+      "id": "dev-002",
+      "rule": "no-hardcoded-color",
+      "file": "src/components/Button.tsx",
+      "line": 31,
+      "snippet": "color: #1F2937;",
+      "suggestedToken": "color.text"
+    },
+    {
+      "id": "dev-003",
+      "rule": "no-arbitrary-spacing",
+      "file": "src/components/Button.tsx",
+      "line": 12,
+      "snippet": "padding: 10px;",
+      "suggestedToken": "spacing.3"
+    },
+    {
+      "id": "dev-004",
+      "rule": "no-arbitrary-spacing",
+      "file": "src/components/ButtonGroup.tsx",
+      "line": 7,
+      "snippet": "gap: 6px;",
+      "suggestedToken": "spacing.2"
+    },
+    {
+      "id": "dev-005",
+      "rule": "no-off-contract-variant",
+      "file": "src/pages/Settings.tsx",
+      "line": 42,
+      "snippet": "<Button variant=\"destructive\">Delete account</Button>",
+      "suggestedToken": "variant=\"secondary\""
+    }
+  ]
+}
