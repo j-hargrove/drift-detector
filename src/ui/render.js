@@ -14,6 +14,12 @@ const RULE_LABEL = {
   'no-arbitrary-spacing': 'Arbitrary spacing',
   'no-off-contract-variant': 'Off-contract variant',
 };
+// Short names for inline references, e.g. "Spacing in Button.tsx:12".
+const RULE_SHORT = {
+  'no-hardcoded-color': 'Colour',
+  'no-arbitrary-spacing': 'Spacing',
+  'no-off-contract-variant': 'Variant',
+};
 const DECISION_LABEL = { 'auto-absorbed': 'Auto-absorbed', rejected: 'Rejected', amended: 'Amended' };
 
 export const esc = (v) =>
@@ -61,8 +67,12 @@ function absorbedSummary(session) {
   const absorbed = autoAbsorbed(session);
   if (!absorbed.length) return `<p class="absorbed">Auto-fix has absorbed nothing yet.</p>`;
   const n = absorbed.length;
-  const links = absorbed.map((e) => `<a href="#log-${esc(e.id)}"><code>${esc(e.id)}</code></a>`).join(', ');
+  const links = absorbed.map((e) => `<a href="#log-${esc(e.id)}">${esc(shortRef(e))}</a>`).join(', ');
   return `<p class="absorbed">Auto-fix absorbed <a href="#log-${esc(absorbed[0].id)}">${n} deviation${n === 1 ? '' : 's'}</a> without asking: ${links}.</p>`;
+}
+
+function shortRef({ rule, file, line }) {
+  return `${RULE_SHORT[rule] ?? rule} in ${String(file).split('/').pop()}:${line}`;
 }
 
 export function queue(session, pending, notes, errors) {
