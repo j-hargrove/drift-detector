@@ -35,6 +35,8 @@ Four input files in `data/`:
 3. `lint-report.json`: deviations, each with `id`, `rule`, `file`, `line`, `snippet`, `suggestedToken`.
 4. `reasons.json`: keyed by deviation `id`, value is the agent's stated reason. A missing key means "No reason given" and is visibly flagged.
 
+The demo files load by default. Users can load their own version of any of the four files (file picker or drag and drop, one slot per file). Each file is checked by `src/core/validate.js` before use, and problems are shown inline in plain language; a file with problems is not applied. Loading a file starts a new review. "Reset to demo data" restores all four.
+
 Contract and policy are separate on purpose. The contract describes the design system; the policy describes how much the agent may decide alone. Amend proposes contract changes only and must never touch policy.
 
 Seed scenario (must satisfy the definition of done):
@@ -70,6 +72,15 @@ These are defaults; the user can change any dial.
   5. Metadata (rule id, dial, timestamps): smallest, muted.
 - **Reject and Amend buttons are identical** (same outline, size, weight), side by side at every width, so the UI doesn't suggest an answer.
 - **Palette and system**, all CSS custom properties: warm neutrals + one accent (`#2f5b8a`, focus/selection/links) + one warning (`#b23a1e`, blocked status and missing reasons). System UI face plus monospace; type scale 13 / 16 / 20 / 32; spacing on an 8px scale. Sections separated by whitespace and thin rules: no cards, coloured borders, shadows, gradients, pills, emoji or uppercase eyebrows.
+
+## Phases
+1. Core logic and seed data. Done.
+2. UI. Done (plus a design pass and a framework/policy pass).
+3. Load your own contract, policy, lint report and reasons files: file picker plus drag and drop, plain-language inline validation errors, "Reset to demo data."
+4. Accessibility: keyboard-operable throughout, visible focus, landmarks, aria-live for status changes, AA contrast (check the muted 13px metadata and the warning red specifically), empty states for every screen.
+5. Deploy to Vercel from `main`: verify `vercel.json` against the real deploy, confirm the data files load in production, finish the README.
+
+Commit and push after each phase; update `BUILD_LOG.md` after each phase.
 
 ## Definition of done (v1)
 Load seed files. One rule auto-fix, one ask, one block. Review cards, execute one Reject and one Amend. Export a log showing all three dial behaviors and both decisions with reasons.

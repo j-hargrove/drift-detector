@@ -92,3 +92,29 @@ No new features. Screenshots in `docs/design-pass/`: `before-*` / `after-*`, eac
 **Verified**
 - The design-pass screenshots in `docs/design-pass/` were cropped just above the old footer, which named the previous framework. Everything above it is unchanged.
 - 24/24 tests pass. Both screens (initial and resolved) screenshotted at 1280px and 390px, with `scrollWidth` = `clientWidth` (no sideways scroll) in all four. Every link in the absorbed-count line was checked against an existing log entry id.
+
+## Auto-fix line wording (2026-10-20)
+- The auto-fix line now names each absorbed deviation by rule and location ("Spacing in Button.tsx:12") instead of by id. Ids mean nothing to a reader; rule plus file is what they'd look for. The links still go to the log entries.
+
+## Phase 3: Load your own files (2026-10-20)
+
+**Built**
+- `src/core/validate.js`: pure, plain-language checks for each of the four files, plus JSON parsing that reports the line and column of a syntax error. Problems are capped at 8 per file, then "…and N more." Files are limited to 1 MB. 18 new tests (42 total).
+- A "Your data" section at the bottom of the page with one row per file (contract, policy, lint report, reasons). Each row has a drop zone that is also a file picker, shows which file is in use ("demo data" or the file name), and lists problems inline under the row.
+- "Reset to demo data" restores all four files. A line in the masthead says what's in use ("Using your lint report (team-lint.json). Demo data for the rest.") and links to the section.
+- Load results are announced through a polite live region.
+
+**Decisions**
+- **One slot per file, not one drop zone for everything.** Guessing which file is which from its name or shape would fail exactly when someone's file names differ from ours, and the error would be confusing. Four labelled slots make each error obviously about one file.
+- **A bad file is never applied.** The previous file for that slot stays in use, and the error says so ("Still using demo data"). Inputs are validated in two layers: `validate.js` gives friendly messages for each file on its own, and `createSession` still enforces its own rules (for example, no dials in the contract). If the combination of files fails, that error is shown under the slot too.
+- **Loading any file starts a new review**, because decisions refer to deviations that may no longer exist. The section's hint says this and suggests exporting first. I chose that over a confirm dialog: one more modal on a page about not hiding decisions felt like the wrong trade for a demo with no persistence.
+- **Partial replacement is allowed**: load just a lint report and keep the demo contract, policy and reasons. That's the realistic case (your agent's output, our sample contract).
+- Rules with no friendly label (anything outside the three seed rules) show their id once instead of "id · id".
+- A file dropped outside a drop zone is swallowed instead of letting the browser navigate away and lose the review.
+
+**Problems hit**
+- **Class-name collision.** The new masthead `.source` line reused a class the review card already had with `display: grid`, so the link and file name each dropped onto their own line. Renamed the card's wrapper to `.review__source`.
+- **The screenshot harness was racing the app.** Headless Chrome's virtual time budget fast-forwards `setTimeout`, but `file.text()` is real I/O, so measurements sometimes ran before the file finished loading. I replaced the iframe harness with a small Chrome DevTools Protocol script. It waits on DOM conditions (the live-region announcement), sets a true 390px viewport (no more iframe workaround), and records console errors. It caught a missing favicon 404, now silenced with an empty `data:` icon.
+
+**Verified**
+- 42/42 tests pass. Five states at 1280px and 390px (initial, all decided, three bad files, a custom lint report, reset after loading): no sideways scroll and no console errors in any of them. Files were loaded through the real `change` and `drop` events.

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Drift Detector</title>
   <meta name="description" content="Review design-system drift introduced by AI agents. Decide whether the code or the contract is wrong.">
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="src/ui/app.js"></script>
 </head>
@@ -14,6 +15,7 @@
       <h1>Drift Detector</h1>
       <p class="lede">An AI agent changed your Button. Other tools fix that quietly. Here you see what broke and why the agent did it, then you decide: <strong>Reject</strong> means the code is wrong. <strong>Amend</strong> means the contract is wrong.</p>
       <p class="lede">Set, Explain, Decide, Record.</p>
+      <p class="meta source" id="source"></p>
     </div>
     <div id="status" aria-live="polite"></div>
   </header>
@@ -43,6 +45,15 @@
         <button id="export" class="link-button" type="button">Export JSON</button>
       </div>
       <div id="log"></div>
+    </section>
+
+    <section id="data" aria-labelledby="data-title">
+      <div class="section-head">
+        <h2 id="data-title">Your data <span class="hint">Load your own files to review your agent’s drift. Each file is checked before it’s used. Loading a file starts a new review, so export the log first if you want to keep it.</span></h2>
+        <button id="reset" class="link-button" type="button">Reset to demo data</button>
+      </div>
+      <div id="loader" class="loader"></div>
+      <p id="announce" class="sr-only" aria-live="polite"></p>
     </section>
   </main>
 

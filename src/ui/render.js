@@ -26,6 +26,8 @@ export const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const ruleLabel = (rule) => RULE_LABEL[rule] ?? rule;
+// Label plus id, without repeating the id for rules that have no friendly label.
+const ruleName = (rule) => (RULE_LABEL[rule] ? `${RULE_LABEL[rule]} · <code>${esc(rule)}</code>` : `<code>${esc(rule)}</code>`);
 
 export function status({ blocked, blockedCount }) {
   return blocked
@@ -50,7 +52,7 @@ export function dials(session) {
         <div class="dial">
           <div class="dial__rule">
             <h3>${esc(ruleLabel(rule))}</h3>
-            <p class="meta"><code>${esc(rule)}</code> · ${all.length} found · ${open} undecided</p>
+            <p class="meta">${RULE_LABEL[rule] ? `<code>${esc(rule)}</code> · ` : ''}${all.length} found · ${open} undecided</p>
           </div>
           <fieldset class="dial__options">
             <legend class="sr-only">Dial for ${esc(rule)}</legend>
@@ -94,8 +96,8 @@ function card(session, d, note, error) {
 
   return `
     <article class="review" data-id="${esc(d.id)}">
-      <p class="meta">${DIAL_LABEL[dial]} · ${esc(ruleLabel(d.rule))} · <code>${esc(d.rule)}</code></p>
-      <div class="source">
+      <p class="meta">${DIAL_LABEL[dial]} · ${ruleName(d.rule)}</p>
+      <div class="review__source">
         <code class="loc">${esc(d.file)}:${esc(d.line)}</code>
         <pre class="snippet"><code>${esc(d.snippet)}</code></pre>
       </div>
@@ -161,4 +163,47 @@ export function log(entries) {
       </li>`,
     )
     .join('')}</ol>`;
+}
+
+export const SLOTS = [
+  { kind: 'contract', label: 'Contract', help: 'Tokens and the component contract.' },
+  { kind: 'policy', label: 'Policy', help: 'The default dial for each rule.' },
+  { kind: 'report', label: 'Lint report', help: 'The deviations to review.' },
+  { kind: 'reasons', label: 'Reasons', help: 'The agent’s reason for each deviation.' },
+];
+
+const sourceName = (source) => (source === 'demo' ? 'demo data' : `<code>${esc(source)}</code>`);
+
+export function source(sources) {
+  const own = SLOTS.filter((s) => sources[s.kind] !== 'demo');
+  if (!own.length) return `Using demo data. <a href="#data">Load your own files</a>`;
+  const list = own.map((s) => `${s.label.toLowerCase()} (${sourceName(sources[s.kind])})`).join(', ');
+  const rest = own.length < SLOTS.length ? ' Demo data for the rest.' : '';
+  return `Using your ${list}.${rest} <a href="#data">Change files</a>`;
+}
+
+export function loader(sources, loadErrors) {
+  return SLOTS.map(({ kind, label, help }) => {
+    const failed = loadErrors.get(kind);
+    const errorsId = `slot-${kind}-errors`;
+    return `
+      <div class="slot">
+        <div class="slot__head">
+          <h3>${label}</h3>
+          <p class="meta">${help} Now using ${sourceName(sources[kind])}.</p>
+        </div>
+        <label class="drop" data-drop="${kind}">
+          <input class="sr-only" type="file" accept=".json,application/json" data-file="${kind}"${failed ? ` aria-describedby="${errorsId}" aria-invalid="true"` : ''}>
+          <span>Drop a JSON file here, or <span class="drop__pick">choose a file</span><span class="sr-only"> for the ${label.toLowerCase()}</span></span>
+        </label>
+        ${
+          failed
+            ? `<div class="slot__errors" id="${errorsId}">
+                <p>Couldn’t load <code>${esc(failed.file)}</code>. Still using ${sourceName(sources[kind])}.</p>
+                <ul>${failed.problems.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>
+              </div>`
+            : ''
+        }
+      </div>`;
+  }).join('');
 }
