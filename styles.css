@@ -53,6 +53,20 @@ main { padding-bottom: var(--s-8); }
 .warn { color: var(--warning); font-weight: 600; }
 .error { color: var(--warning); font-size: var(--fs-1); font-weight: 600; }
 a { color: var(--accent); text-underline-offset: 3px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
+main:focus, .entry:focus { outline: none; }
+h2[tabindex="-1"]:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+.skip-link {
+  position: absolute;
+  left: var(--s-2);
+  top: calc(-1 * var(--s-8));
+  padding: var(--s-1) var(--s-2);
+  background: var(--text);
+  color: var(--bg);
+  border-radius: var(--radius);
+  z-index: 1;
+}
+.skip-link:focus { top: var(--s-2); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Masthead + build status */
@@ -118,6 +132,7 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .review:first-child { padding-top: 0; }
 .review + .review { border-top: 1px solid var(--rule); }
 
+.review__title { font-size: var(--fs-1); font-weight: 400; }
 .review__source { display: grid; }
 .loc { color: var(--text-muted); }
 .snippet { overflow-x: auto; white-space: pre; }
@@ -142,9 +157,10 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 }
 .decide__verb { font-size: var(--fs-3); font-weight: 650; line-height: 1.3; }
 .decide__gloss { font-size: var(--fs-1); opacity: 0.75; }
-.decide:hover:not(:disabled) { background: var(--text); color: var(--bg); }
+.decide:hover:not([aria-disabled="true"]) { background: var(--text); color: var(--bg); }
 .decide:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-.decide:disabled { opacity: 0.35; cursor: not-allowed; }
+/* Still focusable, so it can be reached and explained; muted text keeps it readable (AA). */
+.decide[aria-disabled="true"] { border-style: dashed; border-color: var(--text-muted); color: var(--text-muted); cursor: not-allowed; }
 .decide__effect { font-size: var(--fs-1); color: var(--text-muted); overflow-wrap: anywhere; }
 .decide__effect code { color: var(--text); }
 
@@ -153,13 +169,14 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .note textarea {
   width: 100%;
   padding: var(--s-1);
-  border: 1px solid var(--rule);
+  border: 1px solid var(--text-muted);
   border-radius: var(--radius);
   background: var(--field);
   color: var(--text);
   font: var(--fs-2)/1.5 var(--font);
   resize: vertical;
 }
+.note textarea::placeholder { color: var(--text-muted); }
 .note textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 /* Proposed contract changes */

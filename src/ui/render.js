@@ -31,11 +31,12 @@ const ruleName = (rule) => (RULE_LABEL[rule] ? `${RULE_LABEL[rule]} · <code>${e
 
 export function status({ blocked, blockedCount }) {
   return blocked
-    ? `<div class="status status--blocked" role="status"><strong>Build blocked</strong><span>${blockedCount === 1 ? '1 blocked deviation needs' : `${blockedCount} blocked deviations need`} a decision</span></div>`
-    : `<div class="status" role="status"><strong>Build clear</strong><span>No blocked deviations</span></div>`;
+    ? `<div class="status status--blocked"><strong>Build blocked</strong><span>${blockedCount === 1 ? '1 blocked deviation needs' : `${blockedCount} blocked deviations need`} a decision</span></div>`
+    : `<div class="status"><strong>Build clear</strong><span>No blocked deviations</span></div>`;
 }
 
 export function dials(session) {
+  if (!session.rules.length) return `<p class="empty">No rules to set. The lint report has no deviations.</p>`;
   return session.rules
     .map((rule) => {
       const all = session.deviations.filter((d) => d.rule === rule);
@@ -44,7 +45,7 @@ export function dials(session) {
       const options = DIALS.map(
         (dial) => `
           <label class="dial__option">
-            <input type="radio" name="dial-${esc(rule)}" value="${dial}" data-rule="${esc(rule)}" ${dial === current ? 'checked' : ''}>
+            <input type="radio" name="dial-${esc(rule)}" value="${dial}" data-rule="${esc(rule)}" data-focus="dial:${esc(rule)}:${dial}" ${dial === current ? 'checked' : ''}>
             <span>${DIAL_LABEL[dial]}</span>
           </label>`,
       ).join('');
@@ -55,7 +56,7 @@ export function dials(session) {
             <p class="meta">${RULE_LABEL[rule] ? `<code>${esc(rule)}</code> · ` : ''}${all.length} found · ${open} undecided</p>
           </div>
           <fieldset class="dial__options">
-            <legend class="sr-only">Dial for ${esc(rule)}</legend>
+            <legend class="sr-only">Dial for ${esc(ruleLabel(rule))}</legend>
             ${options}
           </fieldset>
           <p class="dial__help meta">${DIAL_HELP[current]}</p>
@@ -69,17 +70,21 @@ function absorbedSummary(session) {
   const absorbed = autoAbsorbed(session);
   if (!absorbed.length) return `<p class="absorbed">Auto-fix has absorbed nothing yet.</p>`;
   const n = absorbed.length;
-  const links = absorbed.map((e) => `<a href="#log-${esc(e.id)}">${esc(shortRef(e))}</a>`).join(', ');
-  return `<p class="absorbed">Auto-fix absorbed <a href="#log-${esc(absorbed[0].id)}">${n} deviation${n === 1 ? '' : 's'}</a> without asking: ${links}.</p>`;
+  const links = absorbed
+    .map((e) => `<a href="#log-${esc(e.id)}" data-focus="absorbed:${esc(e.id)}">${esc(shortRef(e))}</a>`)
+    .join(', ');
+  return `<p class="absorbed">Auto-fix absorbed <a href="#log-${esc(absorbed[0].id)}" data-focus="absorbed:count">${n} deviation${n === 1 ? '' : 's'}</a> without asking: ${links}.</p>`;
 }
 
-function shortRef({ rule, file, line }) {
+export function shortRef({ rule, file, line }) {
   return `${RULE_SHORT[rule] ?? rule} in ${String(file).split('/').pop()}:${line}`;
 }
 
 export function queue(session, pending, notes, errors) {
   if (!pending.length) {
-    return `<p class="empty">Nothing is waiting. Every deviation has a decision; see the log below.</p>`;
+    return session.deviations.length
+      ? `<p class="empty">Nothing is waiting. Every deviation has a decision; see the log below.</p>`
+      : `<p class="empty">Nothing to review. The lint report has no deviations.</p>`;
   }
   return pending.map((d) => card(session, d, notes.get(d.id) ?? '', errors.get(d.id))).join('');
 }
@@ -88,15 +93,17 @@ function card(session, d, note, error) {
   const dial = session.dials[d.rule];
   const needsNote = amendNeedsNote(d);
   const resolved = resolveToken(session.contract, d.suggestedToken);
-  const noteId = `note-${esc(d.id)}`;
+  const base = `review-${esc(d.id)}`;
+  const noteId = `${base}-note`;
+  const amendBlocked = needsNote && !note.trim();
 
   const reason = d.agentReason
     ? `<p class="reason__text">“${esc(d.agentReason)}”</p>`
     : `<p class="reason__text reason__text--missing">No reason given. The agent made this change without saying why.</p>`;
 
   return `
-    <article class="review" data-id="${esc(d.id)}">
-      <p class="meta">${DIAL_LABEL[dial]} · ${ruleName(d.rule)}</p>
+    <article class="review" data-id="${esc(d.id)}" aria-labelledby="${base}-title">
+      <h3 class="meta review__title" id="${base}-title">${DIAL_LABEL[dial]} · ${ruleName(d.rule)}<span class="sr-only"> in ${esc(d.file)}:${esc(d.line)}</span></h3>
       <div class="review__source">
         <code class="loc">${esc(d.file)}:${esc(d.line)}</code>
         <pre class="snippet"><code>${esc(d.snippet)}</code></pre>
@@ -107,23 +114,23 @@ function card(session, d, note, error) {
       </div>
       <div class="decision">
         <div class="decision__option">
-          <button type="button" class="decide" data-action="reject" data-id="${esc(d.id)}">
+          <button type="button" class="decide" data-action="reject" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:reject" aria-describedby="${base}-title ${base}-reject">
             <span class="decide__verb">Reject</span>
             <span class="decide__gloss">The code is wrong</span>
           </button>
-          <p class="decide__effect">Code becomes <code>${esc(d.suggestedToken)}</code>${resolved ? ` ${esc(resolved)}` : ''}</p>
+          <p class="decide__effect" id="${base}-reject">Code becomes <code>${esc(d.suggestedToken)}</code>${resolved ? ` ${esc(resolved)}` : ''}</p>
         </div>
         <div class="decision__option">
-          <button type="button" class="decide" data-action="amend" data-id="${esc(d.id)}" ${needsNote && !note.trim() ? 'disabled' : ''}>
+          <button type="button" class="decide" data-action="amend" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:amend" aria-describedby="${base}-title ${base}-amend${needsNote ? ` ${base}-req` : ''}"${amendBlocked ? ' aria-disabled="true"' : ''}>
             <span class="decide__verb">Amend</span>
             <span class="decide__gloss">The contract is wrong</span>
           </button>
-          <p class="decide__effect">Contract: <code>${esc(proposeChange(d, session.componentName))}</code></p>
+          <p class="decide__effect" id="${base}-amend">Contract: <code>${esc(proposeChange(d, session.componentName))}</code></p>
         </div>
       </div>
       <label class="note" for="${noteId}">
-        <span>Note ${needsNote ? '<span class="note__req">required to amend. There is no agent reason, so yours would be the only one on record.</span>' : '(optional)'}</span>
-        <textarea id="${noteId}" data-note="${esc(d.id)}" rows="2" placeholder="Why are you making this call?">${esc(note)}</textarea>
+        <span>Note ${needsNote ? `<span class="note__req" id="${base}-req">required to amend. There is no agent reason, so yours would be the only one on record.</span>` : '(optional)'}</span>
+        <textarea id="${noteId}" data-note="${esc(d.id)}" data-focus="note:${esc(d.id)}" rows="2" placeholder="Why are you making this call?">${esc(note)}</textarea>
       </label>
       ${error ? `<p class="error" role="alert">${esc(error)}</p>` : ''}
     </article>`;
@@ -148,7 +155,7 @@ export function log(entries) {
   return `<ol class="log">${entries
     .map(
       (e) => `
-      <li class="entry" id="log-${esc(e.id)}">
+      <li class="entry" id="log-${esc(e.id)}" tabindex="-1">
         <div class="entry__head">
           <strong>${DECISION_LABEL[e.decision]}</strong>
           <code class="loc">${esc(e.id)}</code>
@@ -193,7 +200,7 @@ export function loader(sources, loadErrors) {
           <p class="meta">${help} Now using ${sourceName(sources[kind])}.</p>
         </div>
         <label class="drop" data-drop="${kind}">
-          <input class="sr-only" type="file" accept=".json,application/json" data-file="${kind}"${failed ? ` aria-describedby="${errorsId}" aria-invalid="true"` : ''}>
+          <input class="sr-only" type="file" accept=".json,application/json" data-file="${kind}" data-focus="file:${kind}"${failed ? ` aria-describedby="${errorsId}" aria-invalid="true"` : ''}>
           <span>Drop a JSON file here, or <span class="drop__pick">choose a file</span><span class="sr-only"> for the ${label.toLowerCase()}</span></span>
         </label>
         ${

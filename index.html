@@ -10,6 +10,7 @@
   <script type="module" src="src/ui/app.js"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to the review</a>
   <header class="masthead">
     <div class="masthead__text">
       <h1>Drift Detector</h1>
@@ -17,10 +18,10 @@
       <p class="lede">Set, Explain, Decide, Record.</p>
       <p class="meta source" id="source"></p>
     </div>
-    <div id="status" aria-live="polite"></div>
+    <div id="status" role="status"></div>
   </header>
 
-  <main>
+  <main id="main" tabindex="-1">
     <section aria-labelledby="dials-title">
       <p class="step">Set</p>
       <h2 id="dials-title">Autonomy Dial <span class="hint">How much each rule lets the agent decide alone</span></h2>
@@ -29,7 +30,7 @@
 
     <section aria-labelledby="queue-title">
       <p class="step">Decide</p>
-      <h2 id="queue-title">Needs your decision</h2>
+      <h2 id="queue-title" tabindex="-1">Needs your decision</h2>
       <div id="queue" class="queue"></div>
     </section>
 
@@ -53,9 +54,9 @@
         <button id="reset" class="link-button" type="button">Reset to demo data</button>
       </div>
       <div id="loader" class="loader"></div>
-      <p id="announce" class="sr-only" aria-live="polite"></p>
     </section>
   </main>
+  <p id="announce" class="sr-only" aria-live="polite"></p>
 
 </body>
 </html>

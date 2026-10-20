@@ -118,3 +118,44 @@ No new features. Screenshots in `docs/design-pass/`: `before-*` / `after-*`, eac
 
 **Verified**
 - 42/42 tests pass. Five states at 1280px and 390px (initial, all decided, three bad files, a custom lint report, reset after loading): no sideways scroll and no console errors in any of them. Files were loaded through the real `change` and `drop` events.
+
+## Phase 4: Accessibility (2026-10-20)
+
+**Measured first.** Contrast ratios for every colour pair on the page, computed from the CSS custom properties:
+
+| Pair | Ratio | Needs |
+|---|---|---|
+| Body text on background | 12.75 | 4.5 |
+| Muted 13px metadata on background | 5.00 | 4.5 |
+| Muted 13px on the note field | 5.26 | 4.5 |
+| Warning red text on background | 5.39 | 4.5 |
+| Blocked status (off-white on warning red) | 5.64 | 4.5 |
+| Accent links on background | 6.36 | 4.5 |
+| Button gloss (text at 75%), and inverted on hover | 5.93 / 7.86 | 4.5 |
+| Focus ring and selected-dial underline (accent) | 6.36 | 3 (non-text) |
+| ~~Disabled Amend (text at 35%)~~ → muted text, dashed border | ~~2.02~~ → 5.00 | 4.5 |
+| ~~Note field border (rule colour)~~ → muted | ~~1.29~~ → 5.00 | 3 (non-text) |
+
+Muted metadata and warning red both pass, but muted has the least headroom (5.00). Any future lightening of `--text-muted` will fail AA, so it's the token to watch.
+
+**Changed**
+- **Focus survives re-renders.** Every interactive element the templates produce carries a stable `data-focus` key, and `render()` puts focus back on the same element after replacing the DOM. Before this, every arrow key on a dial and every file load dropped focus to the top of the page.
+- **Focus after a decision:** it moves to the Reject button of the card that took the decided card's place, or to the "Needs your decision" heading when none are left.
+- **Amend without a note is `aria-disabled`, not `disabled`.** It stays in the tab order and is described by the "note required" text. Activating it shows the reason as an alert and puts the cursor in the note field. A truly disabled button would have been skipped by keyboard users without ever explaining why.
+- **Live regions.** The build status container is the one `role="status"` (an inner nested one was removed) and is only rewritten when its text changes, so screen readers don't re-announce "Build clear" on every click. A separate polite region announces decisions ("Rejected: Variant in Settings.tsx:42. 2 left to decide."), dial changes including anything auto-fix just absorbed, and file loads.
+- **Landmarks and structure.** Skip link to `main`. Each review card is an `article` labelled by an `h3`: its existing metadata line, plus a visually hidden location so the three cards have distinct names. Reject and Amend are described by the card title and their effect line, so "Reject" in a screen reader's button list says which deviation and what it would change. Dial legends use the readable rule name.
+- **Log entries are focusable (`tabindex="-1"`),** so following an auto-fix link moves keyboard focus to the entry, not only the scroll position.
+- **Empty states for every section.** An empty lint report now says "No rules to set" and "Nothing to review. The lint report has no deviations." Before, it said "Every deviation has a decision", which is false when there were none.
+
+**How it was verified**
+- A keyboard-only walkthrough over the Chrome DevTools Protocol using trusted key events (synthetic events from page JS don't move focus). 25 checks, all passing:
+  - **Tab order:** 23 stops, from the skip link through the dials, the auto-fix links, every card's Reject / Amend / note, Export, Reset, and all four file pickers. Each stop has a visible indicator.
+  - **Dials:** arrow keys change the setting and keep focus, and the change is announced.
+  - **Deciding:** Enter and Space both decide. Focus moves to the next card, then to the heading when the queue is empty.
+  - **Amend without a note:** activating it sends focus to the note field, typing enables it, and Shift+Tab returns to it.
+  - **Auto-fix link:** focus lands on the log entry.
+- **Problem in my own check:** the first version counted the browser's default focus ring on the visually hidden radio and file inputs as "visible". Those are opacity 0 or 1px, so the check now requires a visible box. The real indicators are the radio's label text and the drop zone's `:focus-within` outline.
+- 42/42 tests pass. Screenshots at 1280px and 390px of five states (initial, all decided, bad files, custom report, empty report): no sideways scroll, no console errors.
+
+**Not covered**
+- No screen-reader pass with VoiceOver or NVDA. Names, descriptions and live regions were checked structurally, not listened to.

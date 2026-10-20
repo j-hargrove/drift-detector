@@ -13,6 +13,7 @@ const sources = {}; // kind -> 'demo' | uploaded file name
 const loadErrors = new Map(); // kind -> { file, problems }
 const notes = new Map(); // unsent note drafts, by deviation id
 const errors = new Map();
+let lastStatus = '';
 
 async function loadJson(name) {
   const res = await fetch(`data/${name}.json`);
@@ -20,14 +21,19 @@ async function loadJson(name) {
   return res.json();
 }
 
-function render() {
-  $('#status').innerHTML = view.status(buildStatus(session));
+// Re-rendering replaces the DOM. Focusable elements carry a stable data-focus key,
+// so whatever had focus gets it back; `fallback` covers elements that are gone.
+function render(fallback) {
+  const key = document.activeElement?.dataset?.focus;
+  const status = view.status(buildStatus(session));
+  if (status !== lastStatus) $('#status').innerHTML = lastStatus = status; // live region: only on change
   $('#dials').innerHTML = view.dials(session);
   $('#queue').innerHTML = view.queue(session, reviewQueue(session), notes, errors);
   $('#queue-title').textContent = `Needs your decision (${reviewQueue(session).length})`;
   $('#amendments').innerHTML = view.amendments(session.log);
   $('#log').innerHTML = view.log(session.log);
   renderData();
+  if (key) (document.querySelector(`[data-focus="${CSS.escape(key)}"]`) ?? fallback?.())?.focus();
 }
 
 function renderData() {
@@ -37,6 +43,11 @@ function renderData() {
 
 const announce = (message) => {
   $('#announce').textContent = message;
+};
+
+const remainingText = () => {
+  const n = reviewQueue(session).length;
+  return n ? `${n} left to decide.` : 'Nothing left to decide.';
 };
 
 // Start a fresh review from a new set of inputs. Throws if they don't fit together.
@@ -51,7 +62,7 @@ async function onFile(kind, file) {
   const label = view.SLOTS.find((s) => s.kind === kind).label.toLowerCase();
   const fail = (problems) => {
     loadErrors.set(kind, { file: file.name, problems });
-    renderData();
+    render();
     announce(`Couldn’t load ${file.name}. ${problems[0]}`);
   };
 
@@ -81,14 +92,25 @@ function onReset() {
 function onDecide(button) {
   const { id, action } = button.dataset;
   const note = notes.get(id) ?? '';
+  const index = reviewQueue(session).findIndex((d) => d.id === id);
+  const deviation = session.deviations.find((d) => d.id === id);
   try {
     session = (action === 'reject' ? reject : amend)(session, id, { note });
-    notes.delete(id);
-    errors.delete(id);
   } catch (err) {
+    // Typically Amend with no agent reason and no note: say why, then put the cursor in the note.
     errors.set(id, err.message);
+    render();
+    document.querySelector(`[data-focus="note:${CSS.escape(id)}"]`)?.focus();
+    return;
   }
-  render();
+  notes.delete(id);
+  errors.delete(id);
+  // The card is gone; move focus to the card that took its place, or the heading if none are left.
+  render(() => {
+    const cards = document.querySelectorAll('.review');
+    return cards[Math.min(index, cards.length - 1)]?.querySelector('[data-action="reject"]') ?? $('#queue-title');
+  });
+  announce(`${action === 'reject' ? 'Rejected' : 'Amended'}: ${view.shortRef(deviation)}. ${remainingText()}`);
 }
 
 function onExport() {
@@ -139,8 +161,15 @@ function bind() {
   $('#dials').addEventListener('change', (e) => {
     const input = e.target.closest('input[data-rule]');
     if (!input) return;
+    const before = session.log.length;
     session = setDial(session, input.dataset.rule, input.value);
     render();
+    const absorbed = session.log.length - before;
+    const label = input.closest('.dial').querySelector('h3')?.textContent ?? input.dataset.rule;
+    announce(
+      `${label} set to ${input.nextElementSibling.textContent}.` +
+        (absorbed ? ` Auto-fix absorbed ${absorbed} deviation${absorbed === 1 ? '' : 's'}. ${remainingText()}` : ''),
+    );
   });
 
   $('#queue').addEventListener('click', (e) => {
@@ -156,7 +185,8 @@ function bind() {
     notes.set(id, field.value);
     const deviation = session.deviations.find((d) => d.id === id);
     const amendButton = field.closest('.review').querySelector('[data-action="amend"]');
-    amendButton.disabled = deviation.agentReason === null && !field.value.trim();
+    if (deviation.agentReason === null && !field.value.trim()) amendButton.setAttribute('aria-disabled', 'true');
+    else amendButton.removeAttribute('aria-disabled');
   });
 
   $('#export').addEventListener('click', onExport);
