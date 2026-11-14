@@ -15,7 +15,7 @@
     <div class="masthead__text">
       <h1>Drift Detector</h1>
       <p class="lede">An AI agent changed your Button. Other tools fix that quietly. Here you see what broke and why the agent did it, then you decide: <strong>Reject</strong> means the code is wrong. <strong>Amend</strong> means the contract is wrong.</p>
-      <p class="lede">Set, Explain, Decide, Record.</p>
+      <nav aria-label="Steps"><ol class="steps" id="steps"></ol></nav>
       <p class="meta source" id="source"></p>
     </div>
     <div id="status" role="status"></div>
@@ -23,28 +23,26 @@
 
   <main id="main" tabindex="-1">
     <section aria-labelledby="dials-title">
-      <p class="step">Set</p>
-      <h2 id="dials-title">Autonomy Dial <span class="hint">How much each rule lets the agent decide alone</span></h2>
+      <h2 id="dials-title" tabindex="-1">Autonomy Dial <span class="hint">How much each rule lets the agent decide alone</span></h2>
       <div id="dials" class="dials"></div>
     </section>
 
     <section aria-labelledby="queue-title">
-      <p class="step">Decide</p>
-      <h2 id="queue-title" tabindex="-1">Needs your decision</h2>
+      <h2 id="queue-title" tabindex="-1">Needs your decision (<span id="queue-count">0</span>) <span class="hint">Reject if the code is wrong, Amend if the contract is wrong</span></h2>
       <div id="queue" class="queue"></div>
     </section>
 
-    <section aria-labelledby="amend-title">
-      <h2 id="amend-title" tabindex="-1">Proposed contract changes <span class="hint">Every Amend sends a change back to the contract owner</span></h2>
-      <div id="amendments"></div>
+    <section aria-labelledby="follow-title">
+      <h2 id="follow-title" tabindex="-1">Follow-ups (<span id="follow-count">0</span>) <span class="hint">Code fixes and contract changes your decisions still need</span></h2>
+      <div id="follow-ups"></div>
     </section>
 
     <section aria-labelledby="log-title">
-      <p class="step">Record</p>
       <div class="section-head">
-        <h2 id="log-title">Decision log <span class="hint">Includes what the agent absorbed without asking</span></h2>
+        <h2 id="log-title" tabindex="-1">Decision log <span class="hint">Includes what the agent absorbed without asking</span></h2>
         <button id="export" class="link-button" type="button">Export JSON</button>
       </div>
+      <p class="absorbed" id="absorbed"></p>
       <div id="log"></div>
     </section>
 

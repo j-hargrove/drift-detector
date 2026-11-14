@@ -2,6 +2,7 @@
 
 import { DIALS, amendNeedsNote, autoAbsorbed, isDecided } from '../core/session.js';
 import { proposeChange, resolveToken } from '../core/proposals.js';
+import { flagRule, flagTitle } from '../core/explain.js';
 
 const DIAL_LABEL = { 'auto-fix': 'Auto-fix', ask: 'Ask', block: 'Block' };
 const DIAL_HELP = {
@@ -26,12 +27,11 @@ export const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const ruleLabel = (rule) => RULE_LABEL[rule] ?? rule;
-// Label plus id, without repeating the id for rules that have no friendly label.
-const ruleName = (rule) => (RULE_LABEL[rule] ? `${RULE_LABEL[rule]} · <code>${esc(rule)}</code>` : `<code>${esc(rule)}</code>`);
 
-export function status({ blocked, blockedCount }) {
+// While blocked, the badge links to the first blocking card.
+export function status({ blocked, blockedCount }, firstBlockedId) {
   return blocked
-    ? `<div class="status status--blocked"><strong>Build blocked</strong><span>${blockedCount === 1 ? '1 blocked deviation needs' : `${blockedCount} blocked deviations need`} a decision</span></div>`
+    ? `<a class="status status--blocked" href="#review-${esc(firstBlockedId)}" data-blocked-link="${esc(firstBlockedId)}" data-focus="status-link"><strong>Build blocked</strong><span>${blockedCount === 1 ? '1 blocked deviation needs' : `${blockedCount} blocked deviations need`} a decision</span></a>`
     : `<div class="status"><strong>Build clear</strong><span>No blocked deviations</span></div>`;
 }
 
@@ -62,18 +62,29 @@ export function dials(session) {
           <p class="dial__help meta">${DIAL_HELP[current]}</p>
         </div>`;
     })
-    .join('') + absorbedSummary(session);
+    .join('');
 }
 
-// Auto-fix is silent by design; this line keeps it from being invisible.
-function absorbedSummary(session) {
+// Set · Decide (n) · Follow-ups (n) · Record, as in-page links with live counts.
+export function steps(decideCount, followUpCount) {
+  const items = [
+    ['dials-title', 'Set'],
+    ['queue-title', `Decide (${decideCount})`],
+    ['follow-title', `Follow-ups (${followUpCount})`],
+    ['log-title', 'Record'],
+  ];
+  return items.map(([id, label]) => `<li><a href="#${id}" data-step="${id}" data-focus="step:${id}">${label}</a></li>`).join('');
+}
+
+// Auto-fix is silent by design; this line, at the top of the log, keeps it from being invisible.
+export function absorbedSummary(session) {
   const absorbed = autoAbsorbed(session);
-  if (!absorbed.length) return `<p class="absorbed">Auto-fix has absorbed nothing yet.</p>`;
+  if (!absorbed.length) return `Auto-fix has absorbed nothing yet.`;
   const n = absorbed.length;
   const links = absorbed
     .map((e) => `<a href="#log-${esc(e.id)}" data-focus="absorbed:${esc(e.id)}">${esc(shortRef(e))}</a>`)
     .join(', ');
-  return `<p class="absorbed">Auto-fix absorbed <a href="#log-${esc(absorbed[0].id)}" data-focus="absorbed:count">${n} deviation${n === 1 ? '' : 's'}</a> without asking: ${links}.</p>`;
+  return `Auto-fix absorbed <a href="#log-${esc(absorbed[0].id)}" data-focus="absorbed:count">${n} deviation${n === 1 ? '' : 's'}</a> without asking: ${links}.`;
 }
 
 export function shortRef({ rule, file, line }) {
@@ -98,20 +109,24 @@ function card(session, d, note, error) {
   const amendBlocked = needsNote && !note.trim();
 
   const reason = d.agentReason
-    ? `<p class="reason__text">“${esc(d.agentReason)}”</p>`
-    : `<p class="reason__text reason__text--missing">No reason given. The agent made this change without saying why.</p>`;
+    ? `<dd class="reason__text">“${esc(d.agentReason)}”</dd>`
+    : `<dd class="reason__text reason__text--missing">No reason given. The agent made this change without saying why.</dd>`;
 
   return `
-    <article class="review" data-id="${esc(d.id)}" aria-labelledby="${base}-title">
-      <h3 class="meta review__title" id="${base}-title">${DIAL_LABEL[dial]} · ${ruleName(d.rule)}<span class="sr-only"> in ${esc(d.file)}:${esc(d.line)}</span></h3>
-      <div class="review__source">
-        <code class="loc">${esc(d.file)}:${esc(d.line)}</code>
-        <pre class="snippet"><code>${esc(d.snippet)}</code></pre>
-      </div>
-      <div class="reason">
-        <p class="meta">Explain · agent’s reason</p>
-        ${reason}
-      </div>
+    <article class="review" id="${base}" tabindex="-1" data-id="${esc(d.id)}" aria-labelledby="${base}-title">
+      <h3 class="review__title" id="${base}-title">${esc(flagTitle(d, session.contract))}</h3>
+      <p class="meta review__meta">${DIAL_LABEL[dial]} · ${esc(ruleLabel(d.rule))} · <code>${esc(d.file)}:${esc(d.line)}</code></p>
+      <pre class="snippet"><code>${esc(d.snippet)}</code></pre>
+      <dl class="why">
+        <div>
+          <dt class="meta">Why it was flagged</dt>
+          <dd>${esc(flagRule(d, session.contract))}</dd>
+        </div>
+        <div>
+          <dt class="meta">Why the agent did it</dt>
+          ${reason}
+        </div>
+      </dl>
       <div class="decision">
         <div class="decision__option">
           <button type="button" class="decide" data-action="reject" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:reject" aria-describedby="${base}-title ${base}-reject">
@@ -136,20 +151,26 @@ function card(session, d, note, error) {
     </article>`;
 }
 
-export function amendments(log, resolving) {
-  const amended = log.filter((e) => e.decision === 'amended');
-  if (!amended.length) return `<p class="empty">No amendments yet.</p>`;
-  const open = amended.filter((e) => e.resolution.status === 'pending');
-  if (!open.length) return `<p class="empty">Every proposed change has been applied. See the log below.</p>`;
-  return `<ol class="amendments">${open
-    .map(
-      (e) => `
+// Reject and Amend decisions whose code fix or contract change hasn't happened yet.
+export function followUps(log, resolving) {
+  const decided = log.filter((e) => e.resolution);
+  if (!decided.length) {
+    return `<p class="empty">Nothing to follow up yet. Each Reject or Amend waits here until the code is fixed or the contract is updated.</p>`;
+  }
+  const open = decided.filter((e) => e.resolution.status === 'pending');
+  if (!open.length) return `<p class="empty">All follow-ups are done. See the log below.</p>`;
+  return `<ol class="follow-ups">${open
+    .map((e) => {
+      const amended = e.decision === 'amended';
+      return `
       <li>
-        <code>${esc(e.proposedChange)}</code>
-        <p class="meta">from ${esc(e.id)} · ${e.agentReason ? 'agent gave a reason' : '<span class="warn">no agent reason</span>'}${e.note ? ` · note: “${esc(e.note)}”` : ''}</p>
-        ${resolveControl(e, 'amend', resolving)}
-      </li>`,
-    )
+        <p><span class="follow-ups__kind">${amended ? 'Contract change' : 'Code fix'}</span> · ${amended
+          ? `<code>${esc(e.proposedChange)}</code>`
+          : `<code>${esc(e.file)}:${esc(e.line)}</code> becomes <code>${esc(e.suggestedFix)}</code>`}</p>
+        <p class="meta">${esc(shortRef(e))} · ${e.agentReason ? 'agent gave a reason' : '<span class="warn">no agent reason</span>'}${e.note ? ` · note: “${esc(e.note)}”` : ''}</p>
+        ${resolveControl(e, 'follow', resolving)}
+      </li>`;
+    })
     .join('')}</ol>`;
 }
 

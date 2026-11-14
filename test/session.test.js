@@ -6,6 +6,7 @@ import {
   buildStatus,
   createSession,
   exportLog,
+  followUps,
   reject,
   reopen,
   resolve,
@@ -258,6 +259,13 @@ describe('resolution', () => {
     expect(() => reopen(s, 'dev-002')).toThrow(/not resolved/);
     expect(() => reopen(s, 'dev-003')).toThrow(/auto-absorbed/);
     expect(() => reopen(s, 'nope')).toThrow(/no decision/);
+  });
+
+  it('followUps lists only pending reject and amend entries', () => {
+    const s = decided();
+    expect(followUps(s).map((e) => e.id)).toEqual(['dev-002', 'dev-001']);
+    expect(followUps(resolve(s, 'dev-002')).map((e) => e.id)).toEqual(['dev-001']);
+    expect(followUps(start())).toEqual([]);
   });
 
   it('export includes resolution', () => {

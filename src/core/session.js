@@ -80,6 +80,11 @@ export function reviewQueue(session) {
     .sort((a, b) => rank[session.dials[a.rule]] - rank[session.dials[b.rule]]);
 }
 
+// Decisions whose code fix or contract change hasn't happened yet.
+export function followUps(session) {
+  return session.log.filter((e) => e.resolution?.status === 'pending');
+}
+
 export function autoAbsorbed(session) {
   return session.log.filter((e) => e.decision === 'auto-absorbed');
 }

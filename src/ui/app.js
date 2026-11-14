@@ -1,4 +1,15 @@
-import { amend, buildStatus, createSession, exportLog, reject, reopen, resolve, reviewQueue, setDial } from '../core/session.js';
+import {
+  amend,
+  buildStatus,
+  createSession,
+  exportLog,
+  followUps,
+  reject,
+  reopen,
+  resolve,
+  reviewQueue,
+  setDial,
+} from '../core/session.js';
 import { checkFile, sizeProblem } from '../core/validate.js';
 import * as view from './render.js';
 
@@ -13,7 +24,7 @@ const sources = {}; // kind -> 'demo' | uploaded file name
 const loadErrors = new Map(); // kind -> { file, problems }
 const notes = new Map(); // unsent note drafts, by deviation id
 const errors = new Map();
-let resolving = null; // the one open "Mark fixed/applied" note form: { id, scope, note }
+let resolving = null; // the one open "Mark fixed/applied" note form: { id, scope, note }; scope is 'log' or 'follow'
 let lastStatus = '';
 
 async function loadJson(name) {
@@ -26,12 +37,17 @@ async function loadJson(name) {
 // so whatever had focus gets it back; `fallback` covers elements that are gone.
 function render(fallback) {
   const key = document.activeElement?.dataset?.focus;
-  const status = view.status(buildStatus(session));
+  const pending = reviewQueue(session); // blocked first
+  const open = followUps(session).length;
+  const status = view.status(buildStatus(session), pending[0]?.id);
   if (status !== lastStatus) $('#status').innerHTML = lastStatus = status; // live region: only on change
+  $('#steps').innerHTML = view.steps(pending.length, open);
   $('#dials').innerHTML = view.dials(session);
-  $('#queue').innerHTML = view.queue(session, reviewQueue(session), notes, errors);
-  $('#queue-title').textContent = `Needs your decision (${reviewQueue(session).length})`;
-  $('#amendments').innerHTML = view.amendments(session.log, resolving);
+  $('#queue').innerHTML = view.queue(session, pending, notes, errors);
+  $('#queue-count').textContent = pending.length;
+  $('#follow-ups').innerHTML = view.followUps(session.log, resolving);
+  $('#follow-count').textContent = open;
+  $('#absorbed').innerHTML = view.absorbedSummary(session);
   $('#log').innerHTML = view.log(session.log, resolving);
   renderData();
   if (key) (document.querySelector(`[data-focus="${CSS.escape(key)}"]`) ?? fallback?.())?.focus();
@@ -133,17 +149,17 @@ function cancelResolve() {
 function onResolve(form) {
   const { id, scope } = resolving;
   const entry = session.log.find((e) => e.id === id);
-  const index = [...document.querySelectorAll('[data-resolve][data-scope="amend"], [data-resolve-form][data-scope="amend"]')].indexOf(form);
+  const index = [...document.querySelectorAll('[data-resolve][data-scope="follow"], [data-resolve-form][data-scope="follow"]')].indexOf(form);
   session = resolve(session, id, { note: resolving.note });
   resolving = null;
   if (scope === 'log') {
     render();
     focusKey(`reopen:${id}`)()?.focus();
   } else {
-    // Applied changes leave the list; focus the next one, or the heading if none are left.
+    // Done follow-ups leave the list; focus the next one, or the heading if none are left.
     render();
-    const rest = document.querySelectorAll('[data-resolve][data-scope="amend"]');
-    (rest[Math.min(index, rest.length - 1)] ?? $('#amend-title')).focus();
+    const rest = document.querySelectorAll('[data-resolve][data-scope="follow"]');
+    (rest[Math.min(index, rest.length - 1)] ?? $('#follow-title')).focus();
   }
   const done = entry.decision === 'rejected' ? 'Code fix marked done' : 'Contract change marked applied';
   announce(`${done}: ${view.shortRef(entry)}.`);
@@ -258,7 +274,18 @@ function bind() {
   });
 
   bindResolution($('#log'));
-  bindResolution($('#amendments'));
+  bindResolution($('#follow-ups'));
+  // In-page links (build status, step bar) move focus, not just the scroll position.
+  document.addEventListener('click', (e) => {
+    const link = e.target.closest('a[data-blocked-link], a[data-step]');
+    if (!link) return;
+    const target = document.getElementById(link.getAttribute('href').slice(1));
+    if (!target) return;
+    e.preventDefault();
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ block: 'start' });
+    history.replaceState(null, '', link.getAttribute('href'));
+  });
   $('#export').addEventListener('click', onExport);
   bindLoader();
 }

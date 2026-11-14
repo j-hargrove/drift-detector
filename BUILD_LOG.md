@@ -206,3 +206,44 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - 49/49 tests pass.
 - Playwright against the local server (`npm run serve`), 27 checks, all passing: decide three deviations; resolve one with a note using only the keyboard; resolve one without a note from the proposed changes list; Escape closes the form; reopen; exported JSON shows a reopened entry as pending with cleared fields, an applied entry as resolved with a null note, and no `resolution` on auto-absorbed entries. Also checked: chip colours from computed styles (no left stripe), focus after each step, live-region text, no sideways scroll at 390px, no console errors.
 - **Problem hit:** the first two attempts to start a local server from the agent were blocked by the tool's permission check. The browser check waited until the server was started by hand.
+
+## IA pass (2026-11-13)
+
+**Why:** a hiring manager, designer or developer should understand a card without knowing the rule ids. The old card led with "Ask · Hard-coded colour · no-hardcoded-color" and gave no plain-language reason for the flag. The intro line "Set, Explain, Decide, Record." named the steps but didn't help anyone get around the page.
+
+**Done**
+- **Card anatomy:** title, meta, snippet, two labelled lines, Reject | Amend, note.
+  - **Title:** a plain-language flag such as "Fill #3B82F6 is a shade off color.primary (#2563EB)", "Padding 10px falls between spacing.2 (8px) and spacing.3 (12px)" or "Button has no “destructive” variant".
+  - **Meta line:** mode · rule name · file:line, with the rule id dropped.
+  - **Labelled lines:** "Why it was flagged" (the contract rule in plain language) and "Why the agent did it" (the agent's reason).
+- **`src/core/explain.js`**, pure and tested (`flagTitle`, `flagRule`):
+  - Colour titles name the CSS property in plain words (background → Fill, color → Text colour).
+  - They say whether the colour is "a shade off" the suggested token (RGB distance ≤ 60), a contract token the component doesn't allow, or far from any token.
+  - Spacing titles place the value against the component's allowed scale.
+  - Unknown rules fall back to "This line breaks the rule …".
+- **Step bar:** replaces the intro line with `Set · Decide (n) · Follow-ups (n) · Record`, in-page links with live counts inside a labelled `nav`. Links move focus to the section heading, not only the scroll position.
+- **Follow-ups section:** replaces "Proposed contract changes". It lists every pending code fix (Reject) and contract change (Amend), each with Mark fixed / Mark applied, and done items leave. Before, a rejected deviation's code fix had nowhere to wait except the log. A new `followUps(session)` helper in core supplies the list and count.
+- **Auto-fix summary line** moved from Set to the top of Record, next to the entries it links to.
+- **Build blocked** is a link while blocked. It scrolls to and focuses the first blocking card, which gets the accent outline. When clear, it's plain text again.
+- **Headings:** section h2s are now 32px (up from 20px). The eyebrow labels (Set / Decide / Record) were removed because the step bar now names the steps and links to the headings, so the eyebrows only repeated it.
+
+**Decisions**
+- **No title field in `reasons.json`.** The request allowed one "if needed". It wasn't: all three seeded rules get specific titles from the contract and lint data alone. A title would also sit oddly in the agent's file, since it describes why the linter flagged the line, not why the agent made the change.
+- **"A shade off", not "one step off".** The example wording implied a colour scale, but the contract has no notion of steps between colours. "A shade off" is true whenever the colours are close.
+- **Card title at 16px semibold,** below the Reject and Amend verbs (20px inside 2px-bordered buttons), so the decision stays the dominant element.
+- **h2 uses the existing 32px step,** the same as the page title. A 24px step would have meant a new type token, and the request said existing tokens.
+- **Follow-ups (n) in the step bar is not a framework step.** It's the Resolve stage between Decide and Record. The framework stays Set / Explain / Decide / Record.
+
+**How it was verified**
+- 59/59 tests pass (9 for `explain.js`, 1 for `followUps`).
+- Playwright against the local server, 25 IA checks, all passing:
+  - card child order and the exact title and meta text
+  - both labelled lines, and the missing reason in the warning colour
+  - step bar counts at the start, after deciding and after resolving
+  - auto-fix line inside Record and gone from Set
+  - h2 computed at 32px, and no eyebrows
+  - Build blocked link focuses and scrolls to the blocking card, by click and with Enter
+  - step link focuses the heading, and the badge turns back to plain text when clear
+  - Follow-ups lists both kinds
+  - Reject and Amend side by side and identical at 390px, no sideways scroll, no console errors
+- The 27-check Resolve script was rerun against the renamed section; all pass.
