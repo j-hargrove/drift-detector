@@ -315,3 +315,37 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 **How it was verified**
 - 59/59 tests pass.
 - Playwright on the local server: Resolve 27/27, IA 25/25 (h2 now checked at 24px), theme audit all passing. Every rendered colour is a token and every measured text pair meets AA. The lowest pair is `--text-muted` on `--bg` at 4.51:1.
+
+## Bug: Reject seemed to do nothing (2026-11-13)
+
+**Report:** on the live site at 125% browser zoom, clicking Reject did nothing visible. The card didn't move and Follow-ups didn't change.
+
+**Reproduced** on the live URL with Playwright: a 1024 CSS px viewport (a 1280px window at 125%), device scale 1.25, real mouse clicks on a Block card and then an Ask card, screenshots before and after.
+
+**Cause: the click worked, but nothing on screen showed it.** The click fired, the state updated and the page re-rendered, with no console errors. But:
+- The next card rendered in exactly the place the decided card had been, so before and after looked almost the same.
+- The pointer was then over the next card's Reject button, so it showed the hover fill and looked like the same button being pressed.
+- The step bar, build status and Follow-ups were all scrolled off screen. The only confirmation went to a screen-reader-only live region.
+- **Worse:** a second click to "try again" would silently reject the next card.
+
+**Fix**
+- **Confirmation in the card's place.** After Reject or Amend, an ice band reading "Rejected: Variant in Settings.tsx:42. Moved to Follow-ups as a code fix to do." renders where the card was, with a link to Follow-ups. Focus goes to that link, and Tab from there reaches the next card. Only the latest confirmation is shown, and loading new files clears it. The live-region text now also says "Moved to Follow-ups".
+- **500ms double-click guard.** A second Reject/Amend within 500ms of a decision is ignored. The ignored press still moves focus to the button under the pointer, which would let Enter decide that card, so the guard puts focus back on the confirmation link.
+- **`scroll-margin-top` on section headings,** so the Follow-ups link doesn't leave its heading flush with the top of the window. At 1.25 scale it landed 0.16px above the edge.
+
+**Decisions**
+- **Confirmation in place, not a toast.** A toast in a corner is easy to miss and disappears on its own. Putting the confirmation where the card was keeps it where the user is looking, and it pushes the next card's buttons out from under the pointer, at least for the first decision.
+- **Guard by time, not layout.** Later confirmations replace earlier ones at about the same height, so the next card can still land under the pointer. Rather than rely on layout, the guard blocks the double-click directly. 500ms is about the default OS double-click interval and well under the time it takes to read a card.
+- **Focus moves to the confirmation, no longer to the next card's Reject.** This changes the Phase 4 behaviour. Landing on the next Reject made Enter-Enter reject two cards without the second card ever being read.
+
+**How it was verified**
+- 59/59 tests pass.
+- **New e2e check** (`decide-visible`), real mouse input at 125% zoom, no state calls, 25 checks:
+  - Reject on the Block card, then a real double-click on Amend for the Ask card. Each decides exactly one card, and the double-click leaves the next card undecided.
+  - Each time, the card leaves Decide, the confirmation text is right and fully on screen, focus is on its link, and the step bar and heading counts update.
+  - The link focuses the Follow-ups heading with it on screen, and both decisions are waiting there.
+  - With the keyboard, Enter on Reject leaves focus on the confirmation. An empty queue still shows the confirmation.
+  - No console errors.
+- **Problem in my own check:** the first version timed out instead of failing when the confirmation was missing (against the old live site). Missing elements now produce FAIL lines.
+- **Run against the live site before the fix:** it fails, as expected, with 12 FAIL lines.
+- **Rerun:** Resolve, IA and theme scripts all pass. They now pause 600ms between decisions, because the guard correctly ignores a second decision faster than that.

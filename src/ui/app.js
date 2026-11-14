@@ -24,6 +24,10 @@ const sources = {}; // kind -> 'demo' | uploaded file name
 const loadErrors = new Map(); // kind -> { file, problems }
 const notes = new Map(); // unsent note drafts, by deviation id
 const errors = new Map();
+let confirmation = null; // the last Reject/Amend, shown where its card was: { entry, index }
+let lastDecisionAt = 0;
+// The next card can render under the pointer; a double-click must not decide it too.
+const DOUBLE_CLICK_GUARD_MS = 500;
 let resolving = null; // the one open "Mark fixed/applied" note form: { id, scope, note }; scope is 'log' or 'follow'
 let lastStatus = '';
 
@@ -43,7 +47,7 @@ function render(fallback) {
   if (status !== lastStatus) $('#status').innerHTML = lastStatus = status; // live region: only on change
   $('#steps').innerHTML = view.steps(pending.length, open);
   $('#dials').innerHTML = view.dials(session);
-  $('#queue').innerHTML = view.queue(session, pending, notes, errors);
+  $('#queue').innerHTML = view.queue(session, pending, notes, errors, confirmation);
   $('#queue-count').textContent = pending.length;
   $('#follow-ups').innerHTML = view.followUps(session.log, resolving);
   $('#follow-count').textContent = open;
@@ -74,6 +78,7 @@ function startReview(next) {
   notes.clear();
   errors.clear();
   resolving = null;
+  confirmation = null;
 }
 
 async function onFile(kind, file) {
@@ -108,6 +113,11 @@ function onReset() {
 }
 
 function onDecide(button) {
+  if (Date.now() - lastDecisionAt < DOUBLE_CLICK_GUARD_MS) {
+    // The ignored press still focused the button under the pointer; put focus back so Enter can't decide it.
+    $('[data-focus="decided-link"]')?.focus();
+    return;
+  }
   const { id, action } = button.dataset;
   const note = notes.get(id) ?? '';
   const index = reviewQueue(session).findIndex((d) => d.id === id);
@@ -123,12 +133,12 @@ function onDecide(button) {
   }
   notes.delete(id);
   errors.delete(id);
-  // The card is gone; move focus to the card that took its place, or the heading if none are left.
-  render(() => {
-    const cards = document.querySelectorAll('.review');
-    return cards[Math.min(index, cards.length - 1)]?.querySelector('[data-action="reject"]') ?? $('#queue-title');
-  });
-  announce(`${action === 'reject' ? 'Rejected' : 'Amended'}: ${view.shortRef(deviation)}. ${remainingText()}`);
+  confirmation = { entry: session.log.find((e) => e.id === id), index };
+  lastDecisionAt = Date.now();
+  // The card is gone and the next one would render in exactly its place, so nothing would seem to happen.
+  // The confirmation takes the card's place instead, and focus goes to its link: visible, and one Tab from the next card.
+  render(() => $('[data-focus="decided-link"]'));
+  announce(`${action === 'reject' ? 'Rejected' : 'Amended'}: ${view.shortRef(deviation)}. Moved to Follow-ups. ${remainingText()}`);
 }
 
 const focusKey = (key) => () => document.querySelector(`[data-focus="${CSS.escape(key)}"]`);

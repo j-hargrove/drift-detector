@@ -91,13 +91,27 @@ export function shortRef({ rule, file, line }) {
   return `${RULE_SHORT[rule] ?? rule} in ${String(file).split('/').pop()}:${line}`;
 }
 
-export function queue(session, pending, notes, errors) {
+// `confirmation` is the last decision ({ entry, index }); it renders where that card was,
+// so the change is visible where the user clicked and the next card's buttons move out from under the pointer.
+export function queue(session, pending, notes, errors, confirmation) {
+  const done = confirmation ? decided(confirmation.entry) : '';
   if (!pending.length) {
-    return session.deviations.length
+    return done + (session.deviations.length
       ? `<p class="empty">Nothing is waiting. Every deviation has a decision; see the log below.</p>`
-      : `<p class="empty">Nothing to review. The lint report has no deviations.</p>`;
+      : `<p class="empty">Nothing to review. The lint report has no deviations.</p>`);
   }
-  return pending.map((d) => card(session, d, notes.get(d.id) ?? '', errors.get(d.id))).join('');
+  const cards = pending.map((d) => card(session, d, notes.get(d.id) ?? '', errors.get(d.id)));
+  if (done) cards.splice(Math.min(confirmation.index, cards.length), 0, done);
+  return cards.join('');
+}
+
+function decided(e) {
+  const amended = e.decision === 'amended';
+  return `
+    <p class="decided" data-decided="${esc(e.id)}">
+      <strong>${amended ? 'Amended' : 'Rejected'}:</strong> ${esc(shortRef(e))}.
+      Moved to <a href="#follow-title" data-step="follow-title" data-focus="decided-link">Follow-ups</a> as a ${amended ? 'contract change' : 'code fix'} to do.
+    </p>`;
 }
 
 function card(session, d, note, error) {

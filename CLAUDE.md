@@ -52,6 +52,7 @@ These are defaults; the user can change any dial.
 - **Reject**: code is wrong; logged with the suggested fix.
 - **Amend**: contract is wrong; log records the proposed contract change (e.g. "add #3B82F6 to Button.allowedTokens.color").
 - Amending a deviation with no agent reason requires a human note. That's the riskiest decision in the app. Enforced in core, not only the UI.
+- After Reject or Amend, a confirmation ("Rejected: … Moved to Follow-ups as a code fix to do.") takes the decided card's place, with a link to Follow-ups, and gets focus. It stays until the next decision. A second Reject/Amend within 500ms of a decision is ignored (double-click guard), and focus goes back to the confirmation.
 - Changing a dial after decisions are made re-evaluates only undecided deviations.
 - A rule with no dial in `policy.json` falls back to **Ask**, never Auto-fix.
 
