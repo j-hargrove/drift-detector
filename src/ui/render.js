@@ -27,6 +27,8 @@ export const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const ruleLabel = (rule) => RULE_LABEL[rule] ?? rule;
+// Escaped, with a break opportunity after each dot, so "Button.allowedTokens.color" wraps at "." not mid-word.
+const breakable = (v) => esc(v).replace(/\./g, '.<wbr>');
 
 // While blocked, the badge links to the first blocking card.
 export function status({ blocked, blockedCount }, firstBlockedId) {
@@ -130,7 +132,8 @@ function card(session, d, note, error) {
     <article class="review" id="${base}" tabindex="-1" data-id="${esc(d.id)}" aria-labelledby="${base}-title">
       <h3 class="review__title" id="${base}-title">${esc(flagTitle(d, session.contract))}</h3>
       <p class="meta review__meta">${DIAL_LABEL[dial]} · ${esc(ruleLabel(d.rule))} · <code>${esc(d.file)}:${esc(d.line)}</code></p>
-      <pre class="snippet"><code>${esc(d.snippet)}</code></pre>
+      <pre class="snippet" data-snippet><code>${esc(d.snippet)}</code></pre>
+      <p class="meta snippet__more" hidden>The line continues. Scroll sideways to read it all.</p>
       <dl class="why">
         <div>
           <dt class="meta">Why it was flagged</dt>
@@ -142,20 +145,14 @@ function card(session, d, note, error) {
         </div>
       </dl>
       <div class="decision">
-        <div class="decision__option">
-          <button type="button" class="decide" data-action="reject" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:reject" aria-describedby="${base}-title ${base}-reject">
-            <span class="decide__verb">Reject</span>
-            <span class="decide__gloss">The code is wrong</span>
-          </button>
-          <p class="decide__effect" id="${base}-reject">Code becomes <code>${esc(d.suggestedToken)}</code>${resolved ? ` ${esc(resolved)}` : ''}</p>
-        </div>
-        <div class="decision__option">
-          <button type="button" class="decide" data-action="amend" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:amend" aria-describedby="${base}-title ${base}-amend${needsNote ? ` ${base}-req` : ''}"${amendBlocked ? ' aria-disabled="true"' : ''}>
-            <span class="decide__verb">Amend</span>
-            <span class="decide__gloss">The contract is wrong</span>
-          </button>
-          <p class="decide__effect" id="${base}-amend">Contract: <code>${esc(proposeChange(d, session.componentName))}</code></p>
-        </div>
+        <button type="button" class="decide" data-action="reject" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:reject" aria-describedby="${base}-title">
+          <span class="decide__head"><span class="decide__verb">Reject</span> <span class="decide__gloss">The code is wrong</span></span>
+          <span class="decide__effect">Code becomes <code>${breakable(d.suggestedToken)}</code>${resolved ? ` ${esc(resolved)}` : ''}</span>
+        </button>
+        <button type="button" class="decide" data-action="amend" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:amend" aria-describedby="${base}-title${needsNote ? ` ${base}-req` : ''}"${amendBlocked ? ' aria-disabled="true"' : ''}>
+          <span class="decide__head"><span class="decide__verb">Amend</span> <span class="decide__gloss">The contract is wrong</span></span>
+          <span class="decide__effect">Contract: <code>${breakable(proposeChange(d, session.componentName))}</code></span>
+        </button>
       </div>
       <label class="note" for="${noteId}">
         <span>Note ${needsNote ? `<span class="note__req" id="${base}-req">required to amend. There is no agent reason, so yours would be the only one on record.</span>` : '(optional)'}</span>
@@ -231,17 +228,19 @@ function resolveControl(e, scope, resolving) {
     </form>`;
 }
 
-export function log(entries, resolving) {
+// Each entry leads with the same plain-language title as its card; id and file path are metadata.
+export function log(entries, resolving, session) {
   if (!entries.length) return `<p class="empty">No decisions yet.</p>`;
+  const deviation = (id) => session.deviations.find((d) => d.id === id);
   return `<ol class="log">${entries
     .map(
       (e) => `
       <li class="entry" id="log-${esc(e.id)}" tabindex="-1">
+        <p class="entry__title">${esc(flagTitle(deviation(e.id) ?? e, session.contract))}</p>
         <div class="entry__head">
           <strong>${DECISION_LABEL[e.decision]}</strong>
-          <code class="loc">${esc(e.id)}</code>
-          <code class="loc">${esc(e.file)}:${esc(e.line)}</code>
           <p class="meta">${DIAL_LABEL[e.dialSetting]} dial · <time datetime="${esc(e.timestamp)}">${esc(new Date(e.timestamp).toLocaleTimeString())}</time></p>
+          <p class="meta"><code class="loc">${esc(e.file).replace(/\//g, '/<wbr>')}:${esc(e.line)}</code> · <code class="loc">${esc(e.id)}</code></p>
         </div>
         <p class="entry__reason">${e.agentReason ? `“${esc(e.agentReason)}”` : '<span class="warn">No reason given</span>'}</p>
         <div class="entry__outcome">

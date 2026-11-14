@@ -12,14 +12,18 @@
 <body>
   <a class="skip-link" href="#main">Skip to the review</a>
   <header class="masthead">
-    <div class="masthead__text">
-      <h1>Drift Detector</h1>
-      <p class="lede">An AI agent changed your Button. Other tools fix that quietly. Here you see what broke and why the agent did it, then you decide: <strong>Reject</strong> means the code is wrong. <strong>Amend</strong> means the contract is wrong.</p>
-      <nav aria-label="Steps"><ol class="steps" id="steps"></ol></nav>
-      <p class="meta source" id="source"></p>
-    </div>
-    <div id="status" role="status"></div>
+    <h1>Drift Detector</h1>
+    <p class="lede">An AI agent changed your Button. Other tools fix that quietly. Here you see what broke and why the agent did it, then you decide: <strong>Reject</strong> means the code is wrong. <strong>Amend</strong> means the contract is wrong.</p>
+    <p class="meta source" id="source"></p>
   </header>
+
+  <!-- Sticky: the steps as tabs and the build status stay in view while you scroll. -->
+  <div class="bar">
+    <div class="bar__inner">
+      <nav aria-label="Steps"><ol class="steps" id="steps"></ol></nav>
+      <div id="status" role="status"></div>
+    </div>
+  </div>
 
   <main id="main" tabindex="-1">
     <section aria-labelledby="dials-title">

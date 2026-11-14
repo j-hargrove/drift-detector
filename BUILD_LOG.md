@@ -349,3 +349,44 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - **Problem in my own check:** the first version timed out instead of failing when the confirmation was missing (against the old live site). Missing elements now produce FAIL lines.
 - **Run against the live site before the fix:** it fails, as expected, with 12 FAIL lines.
 - **Rerun:** Resolve, IA and theme scripts all pass. They now pause 600ms between decisions, because the guard correctly ignores a second decision faster than that.
+
+## Visual polish pass (2026-11-13)
+
+**Scope:** nine items. Four came from my audit of the live site: spacing and alignment, snippets and consequence lines, log titles, a quieter "Your data". Five were added in the follow-up message: cards as panels, a segmented dial, consequence text inside the buttons, a sticky tab bar and a 760px column. Several reverse earlier rules in `CLAUDE.md` ("no cards", consequence text below the buttons, the 960px column). They were asked for explicitly, so `CLAUDE.md` is updated to match.
+
+**Done**
+1. **Spacing and alignment:**
+   - The confirmation band now sits 24px from the next card, the same as the gap between cards. It was 64px: the band's margin plus the card's padding.
+   - The dial help text lines up with the control's left edge. Before, a negative margin pushed the selected segment's ice fill 16px past it.
+   - 16px under section headings, 48px between sections, so each heading groups with its own content.
+   - 4px half-steps were removed, leaving the 8px scale.
+2. **Snippets on ice, padded.** They scroll sideways rather than wrapping. When a snippet overflows (the Settings.tsx line at 390px), app.js shows "The line continues. Scroll sideways to read it all." under it and makes it keyboard-focusable. A text cue, because gradients are banned. Consequence lines carry `<wbr>` after each "." so `Button.allowedTokens.color` wraps at the dots, never mid-word.
+3. **Log entries lead with the card's title** (the same `flagTitle`). Decision, dial and time come next, then file path and id as metadata. Paths break after "/".
+4. **Quieter "Your data".** Drop zones have a dashed `--rule` outline, no fill, 13px text and 8px padding, in a narrower 280px column. Hover, drag-over and focus bring the slate outline back.
+5. **Review cards as panels:** `--surface`, a 1px `--rule` border, 24px padding (16px under 640px), 24px gap. Reject/Amend and the note field sit on `--bg` inside the panel so they read as inset controls.
+6. **Autonomy Dial as one bordered segmented control per rule:** a slate outline with slate dividers. The selected segment keeps the ice fill and underline (red for Block).
+7. **Consequence inside the buttons.** Line 1 is the verb and its meaning ("Reject · The code is wrong"), line 2 is the consequence. The buttons stay identical and side by side at every width.
+8. **Sticky bar.** The step tabs and the build status move out of the masthead into a bar that stays at the top, so the counts and "Build blocked" are always visible. That was the root of the earlier "Reject did nothing" report.
+   - The tab for the section under the bar gets `aria-current="location"`. These are links, not an ARIA tablist: they jump within one page rather than switching panels.
+   - At 390px the bar wraps to two rows and the status shows only its headline. The count stays in the accessible text.
+   - In-page jumps and focus scrolling clear the bar through `scroll-padding-top`, set from the bar's measured height.
+9. **760px reading column** (was 960px). The log grid went from three columns to two (meta | reason and outcome) to fit.
+
+**Decisions**
+- **No separate "polish directive" had reached me.** Items 5–9 were treated as new instructions when they arrived.
+- **Snippets scroll with a text cue, not a fade.** A fade would be a gradient, which is banned.
+- **The bar's clearance is measured, not fixed.** A fixed 80px worked at desktop, but the two-row mobile bar is about 90px, so jumps would have landed under it.
+- **Double-click check relaxed slightly.** With padded cards, the second click of a double-click can land on the next card's panel, which takes focus. That's harmless (Enter on a card does nothing), so the e2e check now requires that focus isn't on a Reject/Amend button, rather than requiring it on the confirmation link.
+
+**How it was verified**
+- 59/59 tests pass.
+- **New `polish` e2e script**, 32 checks at each of 1280px and 390px, all passing:
+  - column width, card styling, padding and gap, and the band gap matching the card gap
+  - the segmented control's border and dividers, and help text aligned with it
+  - consequence lines inside both buttons, still identical and side by side
+  - snippet on ice and padded; the scroll cue appears only when a snippet overflows
+  - consequence lines wrap only at token boundaries, measured per character from layout
+  - the bar is sticky and stays at the top, tab jumps land below it, and the current tab follows scroll
+  - log entries lead with the card title, and drop zones are compact and quiet
+- **Problem in my own check:** the first boundary check flagged normal word wraps as mid-word, because a space at a line break collapses to zero width. It now counts collapsed spaces.
+- **Rerun:** decide-visible, Resolve, IA and theme all pass. IA now measures the Build blocked jump against the sticky bar: the card lands just below it, not at the top of the window.

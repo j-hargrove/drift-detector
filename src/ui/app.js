@@ -52,9 +52,43 @@ function render(fallback) {
   $('#follow-ups').innerHTML = view.followUps(session.log, resolving);
   $('#follow-count').textContent = open;
   $('#absorbed').innerHTML = view.absorbedSummary(session);
-  $('#log').innerHTML = view.log(session.log, resolving);
+  $('#log').innerHTML = view.log(session.log, resolving, session);
   renderData();
+  markOverflowingSnippets();
+  setBarClearance();
+  markCurrentStep();
   if (key) (document.querySelector(`[data-focus="${CSS.escape(key)}"]`) ?? fallback?.())?.focus();
+}
+
+// A snippet that scrolls sideways gets a visible cue and becomes keyboard-scrollable.
+function markOverflowingSnippets() {
+  for (const pre of document.querySelectorAll('[data-snippet]')) {
+    const overflows = pre.scrollWidth > pre.clientWidth;
+    pre.nextElementSibling.hidden = !overflows;
+    if (overflows) pre.setAttribute('tabindex', '0');
+    else pre.removeAttribute('tabindex');
+  }
+}
+
+// The sticky bar wraps to two rows on narrow screens; in-page jumps and focus clear its real height.
+function setBarClearance() {
+  const gap = 16;
+  document.documentElement.style.setProperty('--bar-clearance', `${$('.bar').offsetHeight + gap}px`);
+}
+
+// The tab for the section under the sticky bar gets aria-current.
+function markCurrentStep() {
+  const line = $('.bar').getBoundingClientRect().bottom + 1;
+  let current = null;
+  for (const link of document.querySelectorAll('#steps a[data-step]')) {
+    const section = document.getElementById(link.dataset.step)?.closest('section');
+    if (section && section.getBoundingClientRect().top <= line) current = link;
+  }
+  current ??= $('#steps a[data-step]');
+  for (const link of document.querySelectorAll('#steps a[data-step]')) {
+    if (link === current) link.setAttribute('aria-current', 'location');
+    else link.removeAttribute('aria-current');
+  }
 }
 
 function renderData() {
@@ -298,6 +332,12 @@ function bind() {
   });
   $('#export').addEventListener('click', onExport);
   bindLoader();
+  window.addEventListener('scroll', markCurrentStep, { passive: true });
+  window.addEventListener('resize', () => {
+    markOverflowingSnippets();
+    setBarClearance();
+    markCurrentStep();
+  });
 }
 
 try {
