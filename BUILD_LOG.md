@@ -247,3 +247,51 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
   - Follow-ups lists both kinds
   - Reject and Amend side by side and identical at 390px, no sideways scroll, no console errors
 - The 27-check Resolve script was rerun against the renamed section; all pass.
+
+## Clarity re-theme (2026-11-13)
+
+**Why:** move to the Clarity palette: paper `#F2EFEA`, ice `#DFE5F3`, slate `#557373`, olive-dark `#272401`, ink `#0D0D0D`. Light only, tokens only, no layout changes.
+
+**Done**
+- Every colour in `styles.css` was already a custom property, so this was a `:root` swap plus a few new token uses. No hex values remain outside `:root`. A browser audit read the computed colour, background and border of every visible element across five states, and all of them are tokens.
+- **Tokens:** `--bg` paper; `--surface` `#F9F7F5`; `--text` ink; `--text-muted` olive-dark; `--accent` slate; `--accent-text` `#4A6666`; `--tint` ice; `--resolved` slate (the green `#2f6b3c` is gone); `--danger` `#9B3B2B`; `--rule` `#C9C6BB`. Renamed tokens: `--field` → `--surface`, `--warning` → `--danger`, `--on-warning` removed (text on danger is `--bg`).
+- **New uses:** ice fills the selected dial segment, the auto-fix summary line and pending chips. A selected Block dial is underlined in danger instead of slate. Reject/Amend, inputs and drop zones sit on surface with slate borders, and Reject/Amend fill with slate on hover.
+
+**Contrast, measured on the real page** (AA: 4.5:1 for normal text, 3:1 for large text and UI)
+
+| Pair | Ratio | Where |
+|---|---|---|
+| `--text` on `--surface` | 18.19:1 | Reject/Amend verbs, input text |
+| `--text` on `--bg` | 16.95:1 | body, headings |
+| `--bg` on `--text` | 16.95:1 | skip link, Build blocked hover |
+| `--text` on `--tint` | 15.40:1 | selected dial label |
+| `--text-muted` on `--surface` | 14.68:1 | drop zone text |
+| `--text-muted` on `--bg` | 13.67:1 | 13px metadata, hints, lede |
+| `--text-muted` on `--tint` | 12.43:1 | pending chip |
+| `--danger` on `--bg` | 6.00:1 | "No reason given", note requirement, validation errors |
+| `--bg` on `--danger` | 6.00:1 | Build blocked badge |
+| `--accent-text` on `--surface` | 5.81:1 | Amend while disabled |
+| `--accent-text` on `--bg` | 5.41:1 | links, step bar, link buttons |
+| `--accent-text` on `--tint` | 4.92:1 | links in the auto-fix summary line |
+| `--resolved` on `--surface` | 4.81:1 | resolved chip (13px semibold) |
+| `--surface` on `--accent` | 4.81:1 | Reject/Amend on hover, incl. the 13px gloss |
+| UI: `--danger` on `--tint` | 5.45:1 | selected Block underline |
+| UI: `--accent` on `--surface` | 4.81:1 | input, button and drop-zone borders |
+| UI: `--accent` on `--bg` | 4.48:1 | focus ring, dial underline, link underlines |
+| UI: `--accent` on `--tint` | 4.07:1 | selected dial underline |
+
+`--rule` (`#C9C6BB`, 1.49:1 on paper) is decorative: the section separators carry no information.
+
+**Decisions**
+- **Slate is never small text on paper.** `#557373` is 4.48:1 on paper, just under AA, so links use `--accent-text` (`#4A6666`, 5.41:1). The resolved chip uses slate text but sits on `--surface`, where it reaches 4.81:1.
+- **Text on a slate fill is `--surface`, not paper.** The request said paper text on the accent fill, but paper on slate is also 4.48:1, which fails for the 13px gloss under Reject and Amend. Surface is the palette's lighter paper and reaches 4.81:1. The gloss also lost its 0.75 opacity, which would have lowered the contrast further.
+- **"Primary button fill" became the Reject/Amend hover state.** The app has no primary button, and Reject and Amend must stay identical so the UI doesn't suggest an answer. Slate fills whichever one is under the pointer.
+- **Red still marks missing reasons and validation errors,** not only Build blocked and Block. The request said "Build blocked and Block only", but "No reason given" in red is a standing design decision: it flags the riskiest Amend. Removing it would have been a behaviour change in a tokens-only pass. It's still one red, and it's easy to remove if wanted.
+- **Disabled Amend uses `--accent-text`, not `--text-muted`.** Olive-dark is nearly black, so a muted-text disabled button would look enabled. The dashed border still marks it.
+- **`--rule` is a tint of palette colours** (paper with 20% olive-dark), like `--surface`. A separator in one of the five colours would have been either invisible or too heavy.
+- **Known trade-off:** with olive-dark as `--text-muted`, metadata is separated from body text by size (13px against 16px) and hue, not lightness. It reads as quieter only slightly, so the visual hierarchy's "smallest, muted" level is now mostly "smallest".
+
+**How it was verified**
+- 59/59 tests pass.
+- A Playwright theme audit on the local server across five states (initial and blocked, Reject hover, Build blocked hover, resolve form open, decided and resolved with a file error): every rendered colour is a token, and every text/background pair meets AA (the table above).
+- The IA (25) and Resolve (27) scripts were rerun with the new colour values; all pass.

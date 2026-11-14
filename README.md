@@ -22,7 +22,7 @@ Every outcome is recorded, including the ones the agent absorbed without asking.
 | Step | What it is |
 |---|---|
 | **Set** | The Autonomy Dial. Each lint rule is set to **Auto-fix** (absorbed silently, logged), **Ask** (reviewed, nothing waits) or **Block** (reviewed, and the build stays blocked until it is). |
-| **Explain** | The agent's stated reason sits on every deviation. A missing reason is shown in the same place, in warning red. |
+| **Explain** | The agent's stated reason sits on every deviation. A missing reason is shown in the same place, in red. |
 | **Decide** | Reject or Amend. The two buttons are deliberately identical so the interface doesn't suggest an answer. Amending a change the agent didn't explain requires a note from you. |
 | **Record** | A decision log of every outcome, auto-absorbed ones included, exportable as JSON. |
 
@@ -93,7 +93,7 @@ npm test             # Vitest, 42 tests on src/core
 ## Project structure
 
 ```
-index.html, styles.css   page and styles (light theme, design tokens as CSS custom properties)
+index.html, styles.css   page and styles (light theme, Clarity palette as CSS custom properties)
 src/core/                pure logic, no DOM: session, decisions, proposals, file validation
 src/ui/                  HTML templates (render.js) and event wiring (app.js)
 data/                    demo contract, policy, lint report and reasons
