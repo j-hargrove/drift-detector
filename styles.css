@@ -122,6 +122,8 @@ a.status--blocked:focus-visible { outline: 3px solid var(--accent); outline-offs
 /* Sections: whitespace and a thin rule, nothing else */
 /* More space between sections than inside them, so each heading groups with its own content. */
 section { margin-top: var(--s-6); padding-top: var(--s-3); border-top: 1px solid var(--rule); }
+/* The sticky bar's border already separates the first section; a second rule would double it. */
+main > section:first-child { padding-top: 0; border-top: 0; }
 h2 { font-size: var(--fs-section); line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; margin-bottom: var(--s-2); }
 .hint { display: block; font-size: var(--fs-1); font-weight: 400; line-height: 1.6; letter-spacing: 0; color: var(--text-muted); }
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); }

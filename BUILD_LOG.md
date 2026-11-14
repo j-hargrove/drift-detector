@@ -390,3 +390,4 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
   - log entries lead with the card title, and drop zones are compact and quiet
 - **Problem in my own check:** the first boundary check flagged normal word wraps as mid-word, because a space at a line break collapses to zero width. It now counts collapsed spaces.
 - **Rerun:** decide-visible, Resolve, IA and theme all pass. IA now measures the Build blocked jump against the sticky bar: the card lands just below it, not at the top of the window.
+- **Follow-up:** the first section's top rule was dropped. With the bar at its starting position, its bottom border and that rule showed as two parallel lines 48px apart. The bar's border is now the only line above the Autonomy Dial, and the 48px gap stays.
