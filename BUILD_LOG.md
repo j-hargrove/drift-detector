@@ -391,3 +391,9 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - **Problem in my own check:** the first boundary check flagged normal word wraps as mid-word, because a space at a line break collapses to zero width. It now counts collapsed spaces.
 - **Rerun:** decide-visible, Resolve, IA and theme all pass. IA now measures the Build blocked jump against the sticky bar: the card lands just below it, not at the top of the window.
 - **Follow-up:** the first section's top rule was dropped. With the bar at its starting position, its bottom border and that rule showed as two parallel lines 48px apart. The bar's border is now the only line above the Autonomy Dial, and the 48px gap stays.
+- **Follow-up:** the Build blocked badge is shortened to "Build blocked · 1".
+  - **Why:** the full "Build blocked · 1 blocked deviation needs a decision" didn't fit beside the tabs in the 760px column, so the sticky bar wrapped to two rows on desktop (about 95px tall).
+  - **Result:** it's now one row, 59px tall, at both 1280px and 1024px. At 390px the bar still wraps, as before, but now shows the count too.
+  - **Screen readers:** the visible "· 1" is `aria-hidden`, and a visually hidden span carries the full sentence. The link's accessible name is "Build blocked 1 blocked deviation needs a decision", with no bare "1".
+  - **Verified:** a new `badge` e2e script at 1280, 1024 and 390px checks the visible text (excluding hidden text), the screen-reader sentence, the hidden count, one row on desktop, and that the badge still focuses the blocking card. All pass.
+  - **Problem in my own check:** `innerText` counts clipped screen-reader text, so the first version read both the visible text and the sentence. That also exposed a missing space in the markup ("Build blocked· 1" when copied), now fixed.

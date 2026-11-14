@@ -48,7 +48,7 @@ These are defaults; the user can change any dial.
 ## Behaviors
 - **Auto-fix**: deviation absorbed silently, applies `suggestedToken`, logged with decision `auto-absorbed`. The Autonomy Dial shows a count of auto-absorbed deviations that links to their log entries.
 - **Ask**: shown as a review card. Human chooses Reject or Amend.
-- **Block**: shown as a review card. A persistent "Build blocked" status stays red until every blocked deviation is resolved. While blocked, the badge is a link that scrolls to and focuses the first blocking card.
+- **Block**: shown as a review card. A persistent "Build blocked" status stays red until every blocked deviation is resolved. While blocked, the badge is a link that scrolls to and focuses the first blocking card. It reads "Build blocked · N" so the sticky bar stays one row on desktop. The count is `aria-hidden`, and screen readers get the full sentence instead ("1 blocked deviation needs a decision").
 - **Reject**: code is wrong; logged with the suggested fix.
 - **Amend**: contract is wrong; log records the proposed contract change (e.g. "add #3B82F6 to Button.allowedTokens.color").
 - Amending a deviation with no agent reason requires a human note. That's the riskiest decision in the app. Enforced in core, not only the UI.

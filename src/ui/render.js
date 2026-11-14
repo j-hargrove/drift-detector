@@ -30,11 +30,13 @@ const ruleLabel = (rule) => RULE_LABEL[rule] ?? rule;
 // Escaped, with a break opportunity after each dot, so "Button.allowedTokens.color" wraps at "." not mid-word.
 const breakable = (v) => esc(v).replace(/\./g, '.<wbr>');
 
-// While blocked, the badge links to the first blocking card.
+// While blocked, the badge links to the first blocking card. It shows "Build blocked · N" so the sticky bar
+// stays one row; screen readers get the full sentence instead of the bare count.
 export function status({ blocked, blockedCount }, firstBlockedId) {
+  const sentence = `${blockedCount === 1 ? '1 blocked deviation needs' : `${blockedCount} blocked deviations need`} a decision`;
   return blocked
-    ? `<a class="status status--blocked" href="#review-${esc(firstBlockedId)}" data-blocked-link="${esc(firstBlockedId)}" data-focus="status-link"><strong>Build blocked</strong><span>${blockedCount === 1 ? '1 blocked deviation needs' : `${blockedCount} blocked deviations need`} a decision</span></a>`
-    : `<div class="status"><strong>Build clear</strong><span>No blocked deviations</span></div>`;
+    ? `<a class="status status--blocked" href="#review-${esc(firstBlockedId)}" data-blocked-link="${esc(firstBlockedId)}" data-focus="status-link"><strong>Build blocked</strong> <span class="status__count" aria-hidden="true">· ${blockedCount}</span><span class="sr-only">${sentence}</span></a>`
+    : `<div class="status"><strong>Build clear</strong><span class="status__detail">No blocked deviations</span></div>`;
 }
 
 export function dials(session) {
