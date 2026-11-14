@@ -4,7 +4,7 @@
   --bg: #f2efea;          /* paper */
   --surface: #f9f7f5;     /* paper, half-way to white: inputs, buttons, chips */
   --text: #0d0d0d;        /* ink */
-  --text-muted: #272401;  /* olive-dark */
+  --text-muted: #706e57;  /* olive-dark tinted toward white: the lightest that holds 4.5:1 on --bg (4.51) and --surface (4.84). Only 4.10 on --tint, so never used there */
   --rule: #c9c6bb;        /* paper with 20% olive-dark; decorative only */
   --accent: #557373;      /* slate: borders, underlines, focus ring, active dial, button fill. 3:1+ for UI, not for small text */
   --accent-text: #4a6666; /* slate, darkened: links and small accent text. 5.41:1 on --bg */
@@ -12,12 +12,13 @@
   --resolved: #557373;    /* slate: resolved chip, on --surface only (4.81:1) */
   --danger: #9b3b2b;      /* muted red: Build blocked, Block, missing reasons, errors */
 
-  /* Type: one family plus monospace, four sizes. */
+  /* Type: one family plus monospace, five sizes. */
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --fs-1: 13px;
   --fs-2: 16px;
   --fs-3: 20px;
+  --fs-section: 24px; /* section headings (h2) */
   --fs-4: 32px;
 
   /* Space: 8px scale. */
@@ -108,7 +109,7 @@ a.status--blocked:focus-visible { outline: 3px solid var(--accent); outline-offs
 
 /* Sections: whitespace and a thin rule, nothing else */
 section { margin-top: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--rule); }
-h2 { font-size: var(--fs-4); line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; margin-bottom: var(--s-3); }
+h2 { font-size: var(--fs-section); line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; margin-bottom: var(--s-3); }
 .hint { display: block; margin-top: 4px; font-size: var(--fs-1); font-weight: 400; letter-spacing: 0; color: var(--text-muted); }
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
 
@@ -177,7 +178,7 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .decide:hover:not([aria-disabled="true"]) { background: var(--accent); color: var(--surface); }
 .decide:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 /* Still focusable, so it can be reached and explained; muted text keeps it readable (AA). */
-/* --text-muted is near-black in this palette, so disabled uses accent text: 5.81:1 on --surface. */
+/* Accent text, so disabled reads as slate rather than generic grey: 5.81:1 on --surface. */
 .decide[aria-disabled="true"] { border-style: dashed; color: var(--accent-text); cursor: not-allowed; }
 .decide__effect { font-size: var(--fs-1); color: var(--text-muted); overflow-wrap: anywhere; }
 .decide__effect code { color: var(--text); }
@@ -211,7 +212,7 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   border: 1px solid var(--tint);
   border-radius: var(--radius);
   background: var(--tint);
-  color: var(--text-muted);
+  color: var(--text); /* --text-muted is 4.10:1 on ice */
   font-size: var(--fs-1);
   line-height: 1.7;
 }

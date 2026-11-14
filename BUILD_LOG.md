@@ -295,3 +295,23 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - 59/59 tests pass.
 - A Playwright theme audit on the local server across five states (initial and blocked, Reject hover, Build blocked hover, resolve form open, decided and resolved with a file error): every rendered colour is a token, and every text/background pair meets AA (the table above).
 - The IA (25) and Resolve (27) scripts were rerun with the new colour values; all pass.
+
+## Heading size and muted text (2026-11-13)
+
+**Done**
+- **`--fs-section: 24px`** for section headings (h2). The page title stays at 32px (`--fs-4`). The scale is now 13 / 16 / 20 / 24 / 32. This replaces the IA-pass compromise of using 32px for section headings, which flattened them against the page title.
+- **`--text-muted: #706E57`.** It's olive-dark (`#272401`) mixed 34% toward white: the lightest tint that holds 4.5:1 on both backgrounds it's used on. Searched in 0.1% steps.
+
+| Pair | Ratio |
+|---|---|
+| `--text-muted` on `--bg` | 4.51:1 (the binding constraint) |
+| `--text-muted` on `--surface` | 4.84:1 |
+| `--text-muted` on `--tint` | 4.10:1, **fails**, so it's not used on ice |
+
+**Decision**
+- **Pending chips now use `--text` (ink, 15.40:1 on ice) instead of `--text-muted`.** They are the only place muted text sat on ice, and the new value would have failed AA there. The chip is still neutral: grey-blue fill, no colour accent. Resolved chips are unchanged (slate on surface, 4.81:1).
+- **Disabled Amend stays on `--accent-text`.** Muted text is light enough to work now, but slate keeps the disabled button in the same family as the active ones. Only the comment changed.
+
+**How it was verified**
+- 59/59 tests pass.
+- Playwright on the local server: Resolve 27/27, IA 25/25 (h2 now checked at 24px), theme audit all passing. Every rendered colour is a token and every measured text pair meets AA. The lowest pair is `--text-muted` on `--bg` at 4.51:1.

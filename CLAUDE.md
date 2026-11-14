@@ -83,19 +83,19 @@ Masthead (intro, step bar, build status) → Autonomy Dial → Needs your decisi
   3. Agent's reason: body text, set off by typography. "No reason given" takes the same position in `--danger`.
   4. Snippet and location: small monospace, quiet.
   5. Metadata (rule id, dial, timestamps): smallest, muted.
-  Section headings (h2) use the 32px step, the same as the page title, so sections read as sections.
+  Section headings (h2) use `--fs-section` (24px), between card text and the 32px page title.
 - **Reject and Amend buttons are identical** (same outline, size, weight), side by side at every width, so the UI doesn't suggest an answer.
 - **Palette: Clarity.** Paper `#F2EFEA`, ice `#DFE5F3`, slate `#557373`, olive-dark `#272401`, ink `#0D0D0D`, plus one muted red. Every colour in `styles.css` is a custom property; no hex values outside `:root`. Contrast ratios are listed in `BUILD_LOG.md` (Clarity re-theme).
   - `--bg` `#F2EFEA` (paper). `--surface` `#F9F7F5` (paper half-way to white): inputs, Reject/Amend, drop zones, resolved chip.
-  - `--text` `#0D0D0D` (ink). `--text-muted` `#272401` (olive-dark). This is nearly as dark as ink, so muted metadata is set apart by size (13px), not lightness.
+  - `--text` `#0D0D0D` (ink). `--text-muted` `#706E57`: olive-dark tinted toward white, the lightest value that holds 4.5:1 on both `--bg` (4.51) and `--surface` (4.84). It's only 4.10:1 on ice, so it's never used on `--tint`; text there is `--text`.
   - `--accent` `#557373` (slate): borders, underlines, focus ring, active dial, Reject/Amend hover fill. It's 4.48:1 on paper, so it's never used for small text on `--bg`.
   - `--accent-text` `#4A6666`: links and small accent text (5.41:1 on paper, 4.92:1 on ice).
-  - `--tint` `#DFE5F3` (ice): selected dial segment, auto-fix summary line, pending chip.
+  - `--tint` `#DFE5F3` (ice): selected dial segment, auto-fix summary line, pending chip. Text on ice is `--text` or `--accent-text`, never `--text-muted`.
   - `--resolved` `#557373` (slate): resolved chip text and border, always on `--surface` (4.81:1).
   - `--danger` `#9B3B2B`: Build blocked, the selected Block dial, missing agent reasons, validation errors. The only red.
   - `--rule` `#C9C6BB` (paper with 20% olive-dark): thin section rules, decorative only.
   - Text on an accent fill uses `--surface`, not paper: paper on slate is 4.48:1.
-- **System.** System UI face plus monospace; type scale 13 / 16 / 20 / 32; spacing on an 8px scale. Sections separated by whitespace and thin rules: no cards, coloured borders, shadows, gradients, pills, emoji or uppercase eyebrows. Two allowed exceptions: resolution chips (a text label with the standard 4px radius, not a pill; pending is ice-filled, resolved is a slate outline on surface) and the auto-fix summary line (an ice band with the 4px radius).
+- **System.** System UI face plus monospace; type scale 13 / 16 / 20 / 24 / 32 (`--fs-1`, `--fs-2`, `--fs-3`, `--fs-section`, `--fs-4`); spacing on an 8px scale. Sections separated by whitespace and thin rules: no cards, coloured borders, shadows, gradients, pills, emoji or uppercase eyebrows. Two allowed exceptions: resolution chips (a text label with the standard 4px radius, not a pill; pending is ice-filled, resolved is a slate outline on surface) and the auto-fix summary line (an ice band with the 4px radius).
 
 ## Phases
 1. Core logic and seed data. Done.
