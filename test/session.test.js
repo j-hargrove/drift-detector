@@ -7,6 +7,8 @@ import {
   createSession,
   exportLog,
   reject,
+  reopen,
+  resolve,
   reviewQueue,
   setDial,
 } from '../src/core/session.js';
@@ -209,5 +211,64 @@ describe('proposals', () => {
     const { contract } = seed();
     expect(resolveToken(contract, 'color.primary')).toBe('#2563EB');
     expect(resolveToken(contract, 'variant="secondary"')).toBeNull();
+  });
+});
+
+describe('resolution', () => {
+  const later = () => '2026-10-19T13:00:00.000Z';
+  const decided = () => amend(reject(start(), 'dev-002', { now: clock }), 'dev-001', { now: clock });
+  const entry = (s, id) => s.log.find((e) => e.id === id);
+
+  it('starts reject and amend entries pending; auto-absorbed entries get none', () => {
+    const s = decided();
+    expect(entry(s, 'dev-002').resolution).toEqual({ status: 'pending', at: null, note: null });
+    expect(entry(s, 'dev-001').resolution).toEqual({ status: 'pending', at: null, note: null });
+    expect(entry(s, 'dev-003')).not.toHaveProperty('resolution');
+  });
+
+  it('resolve records the time and a trimmed note, without mutating the input', () => {
+    const before = decided();
+    const s = resolve(before, 'dev-001', { note: '  Shipped in v2.3 ', now: later });
+    expect(entry(s, 'dev-001').resolution).toEqual({ status: 'resolved', at: later(), note: 'Shipped in v2.3' });
+    expect(entry(before, 'dev-001').resolution.status).toBe('pending');
+    expect(entry(s, 'dev-002').resolution.status).toBe('pending');
+  });
+
+  it('resolve stores a blank note as null', () => {
+    const s = resolve(decided(), 'dev-002', { note: '   ', now: later });
+    expect(entry(s, 'dev-002').resolution.note).toBeNull();
+  });
+
+  it('resolve rejects auto-absorbed, undecided, unknown and already-resolved entries', () => {
+    const s = decided();
+    expect(() => resolve(s, 'dev-003')).toThrow(/auto-absorbed/);
+    expect(() => resolve(s, 'dev-005')).toThrow(/no decision/);
+    expect(() => resolve(s, 'nope')).toThrow(/no decision/);
+    expect(() => resolve(resolve(s, 'dev-002'), 'dev-002')).toThrow(/already resolved/);
+  });
+
+  it('reopen returns a resolved entry to pending and clears time and note', () => {
+    const s = reopen(resolve(decided(), 'dev-002', { note: 'Fixed', now: later }), 'dev-002');
+    expect(entry(s, 'dev-002').resolution).toEqual({ status: 'pending', at: null, note: null });
+    expect(entry(s, 'dev-002').decision).toBe('rejected');
+  });
+
+  it('reopen rejects pending, auto-absorbed and unknown entries', () => {
+    const s = decided();
+    expect(() => reopen(s, 'dev-002')).toThrow(/not resolved/);
+    expect(() => reopen(s, 'dev-003')).toThrow(/auto-absorbed/);
+    expect(() => reopen(s, 'nope')).toThrow(/no decision/);
+  });
+
+  it('export includes resolution', () => {
+    const s = resolve(decided(), 'dev-001', { note: 'Added to contract', now: later });
+    const { entries } = exportLog(s, clock);
+    expect(entries.find((e) => e.id === 'dev-001').resolution).toEqual({
+      status: 'resolved',
+      at: later(),
+      note: 'Added to contract',
+    });
+    expect(entries.find((e) => e.id === 'dev-002').resolution.status).toBe('pending');
+    expect(entries.find((e) => e.id === 'dev-003')).not.toHaveProperty('resolution');
   });
 });

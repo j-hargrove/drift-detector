@@ -182,3 +182,27 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 **Not done**
 - No custom domain; the site uses Vercel's generated `drift-detector-psi.vercel.app`.
 - Preview deployments for other branches use Vercel's defaults, which may require a Vercel login to view. Production is public.
+
+## Resolve (2026-11-13)
+
+**Why:** Reject and Amend are decisions, not outcomes. A rejected deviation still needs someone to fix the code, and an amended one still needs someone to update the contract. Before this, the log had no way to show whether either had happened, so a "decided" log could hide work that was never done.
+
+**Done**
+- **Core:** Reject and Amend log entries carry `resolution: { status, at, note }` and start `pending`. `resolve(session, id, { note })` marks one resolved, with a time and an optional note. `reopen(session, id)` returns it to pending. Both are pure, like the rest of `session.js`, and both refuse auto-absorbed, undecided or unknown ids and the wrong starting state. 7 new tests, 49 in total.
+- **Decision log:** each Reject or Amend entry shows a chip ("Code fix pending" / "Contract change pending", or "Resolved: code fixed" / "Resolved: contract updated" with the time and note) and one button: "Mark fixed", "Mark applied" or "Reopen". Mark opens a labelled one-line note field with Confirm and Cancel. Enter confirms and Escape cancels.
+- **Proposed contract changes:** each item has "Mark applied" and leaves the list once applied, so the section only ever shows outstanding work.
+- **Export:** includes `resolution` unchanged.
+- **Accessibility:** results go through the existing polite live region. Focus goes to the note field when it opens, then to Reopen after confirming, to the next pending change (or the section heading) after applying from the list, and back to the Mark button after Reopen.
+
+**Decisions**
+- **Auto-absorbed entries get no `resolution`.** The agent already applied the token. A permanent "pending" chip on them would be noise.
+- **Reopen clears the time and note** rather than keeping a history. The spec has one resolution per entry, and the decision itself is unchanged. A history would be the next step if someone needs it.
+- **Reopen acts immediately,** with no note form. Reopening clears the note, so asking for one would be pointless.
+- **`resolve(session, id, …)`, not `resolve(id, …)`:** the existing core API is pure functions over a session, and this keeps it that way.
+- **New `--resolved` green token (`#2f6b3c`).** The request asked for green chips using existing tokens, but the palette had no green. It's the one addition, checked at 5.77:1 on the background and used only for resolved chips.
+- **Chips, not pills.** The design rules ban pills, so a chip is a text label with a 1px border and the standard 4px radius. Pending is neutral (`--rule` border, muted text), so only finished work carries colour.
+
+**How it was verified**
+- 49/49 tests pass.
+- Playwright against the local server (`npm run serve`), 27 checks, all passing: decide three deviations; resolve one with a note using only the keyboard; resolve one without a note from the proposed changes list; Escape closes the form; reopen; exported JSON shows a reopened entry as pending with cleared fields, an applied entry as resolved with a null note, and no `resolution` on auto-absorbed entries. Also checked: chip colours from computed styles (no left stripe), focus after each step, live-region text, no sideways scroll at 390px, no console errors.
+- **Problem hit:** the first two attempts to start a local server from the agent were blocked by the tool's permission check. The browser check waited until the server was started by hand.

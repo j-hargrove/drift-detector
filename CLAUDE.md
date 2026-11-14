@@ -9,7 +9,7 @@ Drift Detector shows the human what broke, the agent's stated reason, and lets t
 - **Set**: per-rule autonomy dial (auto-fix / ask / block). The screen is called the Autonomy Dial.
 - **Explain**: the agent's stated reason on every deviation, with missing reasons flagged.
 - **Decide**: Reject (the code is wrong) or Amend (the contract is wrong).
-- **Record**: the decision log, including auto-absorbed deviations.
+- **Record**: the decision log, including auto-absorbed deviations. Reject and Amend entries track whether the code fix or contract change has actually happened (Resolve).
 
 v2 (out of scope for v1):
 - **Declare**: the agent states intent before generating.
@@ -56,7 +56,9 @@ These are defaults; the user can change any dial.
 - A rule with no dial in `policy.json` falls back to **Ask**, never Auto-fix.
 
 ## Decision log entry
-`id, rule, file, line, snippet, agentReason (or null), dialSetting, decision (auto-absorbed | rejected | amended), suggestedFix (rejected and auto-absorbed only), proposedChange (amend only), note, timestamp`. Export as JSON.
+`id, rule, file, line, snippet, agentReason (or null), dialSetting, decision (auto-absorbed | rejected | amended), suggestedFix (rejected and auto-absorbed only), proposedChange (amend only), note, timestamp, resolution (rejected and amended only)`. Export as JSON.
+
+`resolution` is `{ status: "pending" | "resolved", at, note }`. New Reject and Amend entries start `pending` with `at` and `note` null. `resolve` sets `resolved`, the time and an optional note; `reopen` returns it to `pending` and clears both. Auto-absorbed entries have no `resolution`: the agent already applied the token, so there's nothing to follow up.
 
 ## Decisions so far
 - **Policy lives in `policy.json`, not the contract.** Dials are governance over the agent, not part of the design system; keeping them apart means Amend can never loosen its own oversight.
@@ -71,7 +73,7 @@ These are defaults; the user can change any dial.
   4. Snippet and location: small monospace, quiet.
   5. Metadata (rule id, dial, timestamps): smallest, muted.
 - **Reject and Amend buttons are identical** (same outline, size, weight), side by side at every width, so the UI doesn't suggest an answer.
-- **Palette and system**, all CSS custom properties: warm neutrals + one accent (`#2f5b8a`, focus/selection/links) + one warning (`#b23a1e`, blocked status and missing reasons). System UI face plus monospace; type scale 13 / 16 / 20 / 32; spacing on an 8px scale. Sections separated by whitespace and thin rules: no cards, coloured borders, shadows, gradients, pills, emoji or uppercase eyebrows.
+- **Palette and system**, all CSS custom properties: warm neutrals + one accent (`#2f5b8a`, focus/selection/links) + one warning (`#b23a1e`, blocked status and missing reasons) + one resolved green (`--resolved: #2f6b3c`, 5.77:1 on the background, used only for "Resolved" chips). System UI face plus monospace; type scale 13 / 16 / 20 / 32; spacing on an 8px scale. Sections separated by whitespace and thin rules: no cards, coloured borders, shadows, gradients, pills, emoji or uppercase eyebrows. The one exception is resolution chips: a text label with a 1px border and the standard 4px radius (not a pill). Pending uses `--rule` and muted text; resolved uses `--resolved`.
 
 ## Phases
 1. Core logic and seed data. Done.

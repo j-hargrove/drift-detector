@@ -136,21 +136,67 @@ function card(session, d, note, error) {
     </article>`;
 }
 
-export function amendments(log) {
+export function amendments(log, resolving) {
   const amended = log.filter((e) => e.decision === 'amended');
   if (!amended.length) return `<p class="empty">No amendments yet.</p>`;
-  return `<ol class="amendments">${amended
+  const open = amended.filter((e) => e.resolution.status === 'pending');
+  if (!open.length) return `<p class="empty">Every proposed change has been applied. See the log below.</p>`;
+  return `<ol class="amendments">${open
     .map(
       (e) => `
       <li>
         <code>${esc(e.proposedChange)}</code>
         <p class="meta">from ${esc(e.id)} · ${e.agentReason ? 'agent gave a reason' : '<span class="warn">no agent reason</span>'}${e.note ? ` · note: “${esc(e.note)}”` : ''}</p>
+        ${resolveControl(e, 'amend', resolving)}
       </li>`,
     )
     .join('')}</ol>`;
 }
 
-export function log(entries) {
+const RESOLUTION = {
+  rejected: { pending: 'Code fix pending', resolved: 'Resolved: code fixed', action: 'Mark fixed' },
+  amended: { pending: 'Contract change pending', resolved: 'Resolved: contract updated', action: 'Mark applied' },
+};
+
+// Chip + one button. `resolving` is the one open note form, if any: { id, scope, note }.
+function resolution(e, resolving) {
+  const text = RESOLUTION[e.decision];
+  if (e.resolution.status === 'resolved') {
+    const { at, note } = e.resolution;
+    return `
+      <div class="resolution">
+        <p><span class="chip chip--resolved">${text.resolved}</span> <time class="meta" datetime="${esc(at)}">${esc(new Date(at).toLocaleTimeString())}</time></p>
+        ${note ? `<p>Note: ${esc(note)}</p>` : ''}
+        <button type="button" class="link-button link-button--small" data-reopen="${esc(e.id)}" data-focus="reopen:${esc(e.id)}">Reopen<span class="sr-only"> ${esc(shortRef(e))}</span></button>
+      </div>`;
+  }
+  return `
+    <div class="resolution">
+      <p><span class="chip">${text.pending}</span></p>
+      ${resolveControl(e, 'log', resolving)}
+    </div>`;
+}
+
+function resolveControl(e, scope, resolving) {
+  const { action } = RESOLUTION[e.decision];
+  const key = `${esc(e.id)}:${scope}`;
+  const ref = esc(shortRef(e));
+  if (resolving?.id !== e.id || resolving.scope !== scope) {
+    return `<button type="button" class="link-button link-button--small" data-resolve="${esc(e.id)}" data-scope="${scope}" data-focus="resolve:${key}">${action}<span class="sr-only"> ${ref}</span></button>`;
+  }
+  const fieldId = `resolve-${esc(e.id)}-${scope}`;
+  return `
+    <form class="resolve-form" data-resolve-form="${esc(e.id)}" data-scope="${scope}">
+      <label for="${fieldId}">Note (optional)</label>
+      <input id="${fieldId}" type="text" data-resolve-note data-focus="resolve-note:${key}" value="${esc(resolving.note)}" autocomplete="off">
+      <div class="resolve-form__actions">
+        <button type="submit" class="link-button link-button--small" data-focus="resolve-confirm:${key}">Confirm<span class="sr-only"> ${action.toLowerCase()}, ${ref}</span></button>
+        <button type="button" class="link-button link-button--small link-button--quiet" data-resolve-cancel data-focus="resolve-cancel:${key}">Cancel</button>
+      </div>
+    </form>`;
+}
+
+export function log(entries, resolving) {
   if (!entries.length) return `<p class="empty">No decisions yet.</p>`;
   return `<ol class="log">${entries
     .map(
@@ -166,6 +212,7 @@ export function log(entries) {
         <div class="entry__outcome">
           <p>${e.proposedChange ? 'Contract' : 'Fix'}: <code>${esc(e.proposedChange ?? e.suggestedFix)}</code></p>
           ${e.note ? `<p>Note: ${esc(e.note)}</p>` : ''}
+          ${e.resolution ? resolution(e, resolving) : ''}
         </div>
       </li>`,
     )

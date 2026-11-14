@@ -50,6 +50,20 @@ export function amend(session, id, { note = '', now = isoNow } = {}) {
   return decide(session, id, 'amended', note, now);
 }
 
+// Reject and Amend are decisions, not outcomes: someone still has to fix the code
+// or update the contract. Resolution tracks that follow-through.
+export function resolve(session, id, { note = '', now = isoNow } = {}) {
+  const entry = findResolvable(session, id);
+  if (entry.resolution.status === 'resolved') throw new Error(`${id} is already resolved.`);
+  return withResolution(session, id, { status: 'resolved', at: now(), note: note.trim() || null });
+}
+
+export function reopen(session, id) {
+  const entry = findResolvable(session, id);
+  if (entry.resolution.status === 'pending') throw new Error(`${id} is not resolved.`);
+  return withResolution(session, id, pendingResolution());
+}
+
 export function amendNeedsNote(deviation) {
   return deviation.agentReason === null;
 }
@@ -92,6 +106,19 @@ function decide(session, id, decision, note, now) {
   return { ...session, log: [...session.log, logEntry(session, deviation, decision, note, now)] };
 }
 
+const pendingResolution = () => ({ status: 'pending', at: null, note: null });
+
+function findResolvable(session, id) {
+  const entry = session.log.find((e) => e.id === id);
+  if (!entry) throw new Error(`${id} has no decision to resolve.`);
+  if (!entry.resolution) throw new Error(`${id} was auto-absorbed; there is nothing to resolve.`);
+  return entry;
+}
+
+function withResolution(session, id, resolution) {
+  return { ...session, log: session.log.map((e) => (e.id === id ? { ...e, resolution } : e)) };
+}
+
 function absorbUndecided(session, now) {
   const absorbed = session.deviations
     .filter((d) => !isDecided(session, d.id) && session.dials[d.rule] === 'auto-fix')
@@ -101,7 +128,7 @@ function absorbUndecided(session, now) {
 
 function logEntry(session, d, decision, note, now) {
   const amended = decision === 'amended';
-  return {
+  const entry = {
     id: d.id,
     rule: d.rule,
     file: d.file,
@@ -115,6 +142,8 @@ function logEntry(session, d, decision, note, now) {
     note: note.trim() || null,
     timestamp: now(),
   };
+  // Auto-absorbed entries were applied by the agent; there is no follow-up to track.
+  return decision === 'auto-absorbed' ? entry : { ...entry, resolution: pendingResolution() };
 }
 
 function findUndecided(session, id) {

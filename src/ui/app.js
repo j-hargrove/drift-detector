@@ -1,4 +1,4 @@
-import { amend, buildStatus, createSession, exportLog, reject, reviewQueue, setDial } from '../core/session.js';
+import { amend, buildStatus, createSession, exportLog, reject, reopen, resolve, reviewQueue, setDial } from '../core/session.js';
 import { checkFile, sizeProblem } from '../core/validate.js';
 import * as view from './render.js';
 
@@ -13,6 +13,7 @@ const sources = {}; // kind -> 'demo' | uploaded file name
 const loadErrors = new Map(); // kind -> { file, problems }
 const notes = new Map(); // unsent note drafts, by deviation id
 const errors = new Map();
+let resolving = null; // the one open "Mark fixed/applied" note form: { id, scope, note }
 let lastStatus = '';
 
 async function loadJson(name) {
@@ -30,8 +31,8 @@ function render(fallback) {
   $('#dials').innerHTML = view.dials(session);
   $('#queue').innerHTML = view.queue(session, reviewQueue(session), notes, errors);
   $('#queue-title').textContent = `Needs your decision (${reviewQueue(session).length})`;
-  $('#amendments').innerHTML = view.amendments(session.log);
-  $('#log').innerHTML = view.log(session.log);
+  $('#amendments').innerHTML = view.amendments(session.log, resolving);
+  $('#log').innerHTML = view.log(session.log, resolving);
   renderData();
   if (key) (document.querySelector(`[data-focus="${CSS.escape(key)}"]`) ?? fallback?.())?.focus();
 }
@@ -56,6 +57,7 @@ function startReview(next) {
   data = next;
   notes.clear();
   errors.clear();
+  resolving = null;
 }
 
 async function onFile(kind, file) {
@@ -111,6 +113,72 @@ function onDecide(button) {
     return cards[Math.min(index, cards.length - 1)]?.querySelector('[data-action="reject"]') ?? $('#queue-title');
   });
   announce(`${action === 'reject' ? 'Rejected' : 'Amended'}: ${view.shortRef(deviation)}. ${remainingText()}`);
+}
+
+const focusKey = (key) => () => document.querySelector(`[data-focus="${CSS.escape(key)}"]`);
+
+function openResolve(id, scope) {
+  resolving = { id, scope, note: '' };
+  render();
+  focusKey(`resolve-note:${id}:${scope}`)()?.focus();
+}
+
+function cancelResolve() {
+  const { id, scope } = resolving;
+  resolving = null;
+  render();
+  focusKey(`resolve:${id}:${scope}`)()?.focus();
+}
+
+function onResolve(form) {
+  const { id, scope } = resolving;
+  const entry = session.log.find((e) => e.id === id);
+  const index = [...document.querySelectorAll('[data-resolve][data-scope="amend"], [data-resolve-form][data-scope="amend"]')].indexOf(form);
+  session = resolve(session, id, { note: resolving.note });
+  resolving = null;
+  if (scope === 'log') {
+    render();
+    focusKey(`reopen:${id}`)()?.focus();
+  } else {
+    // Applied changes leave the list; focus the next one, or the heading if none are left.
+    render();
+    const rest = document.querySelectorAll('[data-resolve][data-scope="amend"]');
+    (rest[Math.min(index, rest.length - 1)] ?? $('#amend-title')).focus();
+  }
+  const done = entry.decision === 'rejected' ? 'Code fix marked done' : 'Contract change marked applied';
+  announce(`${done}: ${view.shortRef(entry)}.`);
+}
+
+function onReopen(id) {
+  const entry = session.log.find((e) => e.id === id);
+  session = reopen(session, id);
+  if (resolving?.id === id) resolving = null;
+  render();
+  focusKey(`resolve:${id}:log`)()?.focus();
+  announce(`Reopened: ${view.shortRef(entry)}. ${entry.decision === 'rejected' ? 'Code fix' : 'Contract change'} pending again.`);
+}
+
+function bindResolution(container) {
+  container.addEventListener('click', (e) => {
+    const open = e.target.closest('button[data-resolve]');
+    if (open) return openResolve(open.dataset.resolve, open.dataset.scope);
+    if (e.target.closest('button[data-resolve-cancel]')) return cancelResolve();
+    const again = e.target.closest('button[data-reopen]');
+    if (again) onReopen(again.dataset.reopen);
+  });
+  container.addEventListener('submit', (e) => {
+    const form = e.target.closest('form[data-resolve-form]');
+    if (!form) return;
+    e.preventDefault();
+    onResolve(form);
+  });
+  // Keep the draft without re-rendering, which would steal focus.
+  container.addEventListener('input', (e) => {
+    if (e.target.matches('[data-resolve-note]') && resolving) resolving.note = e.target.value;
+  });
+  container.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && e.target.closest('form[data-resolve-form]')) cancelResolve();
+  });
 }
 
 function onExport() {
@@ -189,6 +257,8 @@ function bind() {
     else amendButton.removeAttribute('aria-disabled');
   });
 
+  bindResolution($('#log'));
+  bindResolution($('#amendments'));
   $('#export').addEventListener('click', onExport);
   bindLoader();
 }

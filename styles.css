@@ -8,6 +8,7 @@
   --accent: #2f5b8a;
   --warning: #b23a1e;
   --on-warning: #fbf8f3;
+  --resolved: #2f6b3c; /* resolution chips only; 5.77:1 on --bg */
 
   /* Type: one family plus monospace, four sizes. */
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -183,6 +184,33 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .amendments { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-2); }
 .amendments code { overflow-wrap: anywhere; }
 
+/* Resolution: did the code fix or contract change actually happen? */
+.resolution { display: grid; gap: var(--s-1); justify-items: start; padding-top: var(--s-1); }
+.chip {
+  display: inline-block;
+  padding: 0 var(--s-1);
+  border: 1px solid var(--rule);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: var(--fs-1);
+  line-height: 1.7;
+}
+.chip--resolved { border-color: var(--resolved); color: var(--resolved); font-weight: 600; }
+.amendments li { display: grid; gap: var(--s-1); justify-items: start; }
+.resolve-form { display: grid; gap: var(--s-1); width: 100%; font-size: var(--fs-1); color: var(--text-muted); }
+.resolve-form input {
+  width: 100%;
+  max-width: 40ch;
+  padding: 4px var(--s-1);
+  border: 1px solid var(--text-muted);
+  border-radius: var(--radius);
+  background: var(--field);
+  color: var(--text);
+  font: var(--fs-2)/1.5 var(--font);
+}
+.resolve-form input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.resolve-form__actions { display: flex; gap: var(--s-2); }
+
 /* Your data */
 .source { margin-top: var(--s-2); }
 .slot {
@@ -221,6 +249,8 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   white-space: nowrap;
   cursor: pointer;
 }
+.link-button--small { font-size: var(--fs-1); }
+.link-button--quiet { color: var(--text-muted); font-weight: 400; }
 .link-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
 .log { list-style: none; margin: 0; padding: 0; }
