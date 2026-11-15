@@ -623,3 +623,38 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - 122/122 unit tests. New `test/colors.test.js` covers every hex length, comma and space syntax, percentage alpha, first match in a line, out-of-range values, opaque-only sameness, and the Amend text for rgba and hex. New explain tests cover the tint title, shade-off, other-token and not-a-color titles for opaque `rgb()`, a far see-through color, and the stress set's dev-004. New preview tests cover the rgba swatch values and that only rebuilt CSS reaches the style attribute.
 - `stress-real` at 1280px and 390px, all passing. dev-004's title is the tint title, its Amend is the rgba line (it fits in the button), and its swatch is the rgba on a white chip, labelled `rgba(37,99,235,0.08)`.
 - `redesign` 104/104, `fixes` 56/56, `previews` 174/174.
+
+## Dark-blue palette (2026-11-15)
+
+**What changed**
+- Indigo is replaced by dark blue throughout `styles.css`: fills, links, icons, tints, gradients, the hero glow, hero bars, callout strokes, and every shadow and glow. Neutrals moved from indigo-grey to blue-grey. Red and the preview's contract colors are unchanged.
+- **Variables renamed** to match what they hold: `--indigo` → `--brand` (`#1E3A8A`), `--indigo-hover` and `--logo-a` → `--brand-light` (`#2F5BD3`), `--logo-c` → `--brand-deep` (`#172F6E`), `--on-indigo*` → `--on-brand*`, `--bar-indigo` → `--bar-blue`, `--shadow-indigo` → `--shadow-brand`.
+
+| Role | Old | New |
+|---|---|---|
+| Brand fill | `#2D2FA3` | `#1E3A8A` |
+| Brand deep | `#1E2080` | `#172F6E` |
+| Brand light / accent | `#4146D8`, `#5B61E6` | `#2F5BD3` |
+| Tint | `#E9EAFB` | `#E6EDFB` |
+| Hero glow | `rgba(98,104,240,.55)` | `rgba(59,130,246,.40)` |
+| Hero bar (colors) | `#9EA2F5` | `#8FB0F5` |
+| Callout lines | `#C9CCF6` | `#C3D3F5` |
+| Muted on brand | `#CACBE8` | `#CDD7EC` |
+| Ink / body / muted | `#121433` / `#2A2D4A` / `#686C8A` | `#0F1A2E` / `#26324A` / `#5F6B80` |
+| Page / dot grid | `#F4F5F9` / `#D5D8E6` | `#F4F6F9` / `#D3D9E3` |
+| Track / border / hairline | `#F0F1F7` / `#DDE0EA` / `#EEF0F5` | `#EEF2F7` / `#D9DFE8` / `#ECEFF4` |
+| Code / why / stage / row hover | `#F4F5FB` / `#F7F8FB` / `#FBFBFD` / `#FAFAFE` | `#F3F6FA` / `#F6F8FB` / `#FAFBFD` / `#F8FAFD` |
+| Shadows | `rgba(45,47,163,x)`, `rgba(18,20,51,x)` | `rgba(30,58,138,x)`, `rgba(15,26,46,x)` |
+
+**Decisions**
+- **Four values weren't in the brief** (muted-on-brand, why tile, preview stage, row hover). They leaned violet, so each got the blue-grey equivalent. Muted-on-brand went one step lighter than plain white-at-75% (`#CDD7EC`, not `#C5D0E8`), so it passes AA even inside the hero's glow corner (4.64:1; the darker one was 4.33).
+- **The brief's "Bars #8C91F5" and "Code bg #E6E8F2" weren't in the file.** The actual hero bar was `#9EA2F5`, so that is what became `#8FB0F5`. No `#E6E8F2` existed.
+- **Renamed the variables** instead of leaving `--indigo: #1e3a8a`, so the stylesheet doesn't describe a color it no longer uses.
+
+**Contrast (WCAG)**
+- Text: ink 17.39:1 on white; body 12.82; muted 5.38 on white, 4.97 on page, 4.79 on `--track` (its lowest surface), 4.58 on `--tint`. White on brand 10.36, on brand deep 12.59, on glass over brand 7.41, in the glow corner 6.71. Brand on white 10.36, on tint 8.81. Muted-on-brand 7.17 on brand, 4.64 in the glow corner. Red pairs unchanged (white on red 5.09, red-text on red-tint 5.68, red on page 4.70).
+- Non-text: focus ring 5.90 on white, 5.45 on page; callout lines 6.88 on brand; hero color bar 4.78 on brand.
+
+**How it was verified**
+- Every palette hue except red sits between 213° and 224°. A browser sweep of every computed color on the page (text, backgrounds, borders, outlines, shadows, gradients, SVG fill and stroke, every card open, bar stuck) at 1280px and 390px found no hue between 250° and 330°. A grep for every old hex and rgb value in the CSS, HTML and JS finds nothing.
+- 123/123 unit tests. `redesign` 104/104 (expected colors updated; its AA check on all visible text passes), `fixes` 56/56, `stickybar` 32/32.

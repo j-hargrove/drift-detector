@@ -65,7 +65,7 @@ export function status({ blocked, blockedCount }, firstBlockedId, place = 'heade
     : `<div class="status">${icon('checkCircle', 16)}<strong>Build clear</strong><span class="sr-only">No blocked deviations</span></div>`;
 }
 
-// Found / To decide / Absorbed / Blocked. To decide is the solid indigo card;
+// Found / To decide / Absorbed / Blocked. To decide is the solid brand-blue card;
 // Blocked turns red (tile and number) while anything blocks the build.
 export function stats(session) {
   const blocked = buildStatus(session).blockedCount;
