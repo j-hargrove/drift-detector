@@ -12,16 +12,15 @@ import {
 } from '../core/session.js';
 import { DIALS } from '../core/session.js';
 import { checkFile, sizeProblem } from '../core/validate.js';
+import { DATASETS, FILES, datasetFromSearch, loadDataset } from '../core/datasets.js';
 import * as view from './render.js';
 
 const $ = (sel) => document.querySelector(sel);
 
-const DEMO_FILES = { contract: 'contract', policy: 'policy', report: 'lint-report', reasons: 'reasons' };
-
-let demo; // demo inputs, fetched once
+const loaded = new Map(); // built-in dataset name -> its checked inputs, fetched once
 let data; // inputs behind the current session
 let session;
-const sources = {}; // kind -> 'demo' | uploaded file name
+const sources = {}; // kind -> { set: 'demo' | 'stress' } for a built-in file, or the uploaded file's name
 const loadErrors = new Map(); // kind -> { file, problems }
 const notes = new Map(); // unsent note drafts, by deviation id
 const errors = new Map();
@@ -34,10 +33,23 @@ let resolvedDone = null; // the last follow-up marked done, shown where it was: 
 let resolving = null; // the one open "Mark fixed/applied" note form: { id, scope, note }; scope is 'log' or 'follow'
 let lastStatus = '';
 
-async function loadJson(name) {
-  const res = await fetch(`data/${name}.json`);
-  if (!res.ok) throw new Error(`Could not load data/${name}.json (${res.status})`);
-  return res.json();
+async function fetchText(path) {
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`Could not load it (${res.status})`);
+  return res.text();
+}
+
+// A built-in dataset, checked by validate.js like any upload. Throws with `problems` if it fails.
+async function builtIn(name) {
+  if (!loaded.has(name)) loaded.set(name, await loadDataset(name, fetchText));
+  return loaded.get(name);
+}
+
+// Start a new review from a built-in dataset: every input comes from it.
+function useDataset(name, inputs) {
+  startReview({ ...inputs });
+  Object.keys(FILES).forEach((kind) => (sources[kind] = { set: name }));
+  loadErrors.clear();
 }
 
 // Re-rendering replaces the DOM. Focusable elements carry a stable data-focus key,
@@ -181,10 +193,21 @@ async function onFile(kind, file) {
   announce(`Loaded ${file.name} as the ${label}. Started a new review.`);
 }
 
-function onReset() {
-  startReview({ ...demo });
-  Object.keys(DEMO_FILES).forEach((kind) => (sources[kind] = 'demo'));
-  loadErrors.clear();
+// Always back to the demo, whichever set the page opened with; the URL drops ?data= to match.
+async function onReset() {
+  let demo;
+  try {
+    demo = await builtIn('demo');
+  } catch (err) {
+    announce(`Couldn’t reset. ${err.message}.`);
+    return;
+  }
+  useDataset('demo', demo);
+  const url = new URL(location.href);
+  if (url.searchParams.has('data')) {
+    url.searchParams.delete('data');
+    history.replaceState(null, '', url);
+  }
   render();
   announce('Reset to demo data. Started a new review.');
 }
@@ -408,15 +431,13 @@ function bind() {
   });
 }
 
+// ?data=stress opens the stress test set; anything else opens the demo.
+const startSet = datasetFromSearch(location.search);
 try {
-  const entries = await Promise.all(
-    Object.entries(DEMO_FILES).map(async ([kind, file]) => [kind, await loadJson(file)]),
-  );
-  demo = Object.fromEntries(entries);
-  Object.keys(DEMO_FILES).forEach((kind) => (sources[kind] = 'demo'));
-  startReview({ ...demo });
+  useDataset(startSet, await builtIn(startSet));
   bind();
   render();
 } catch (err) {
-  $('main').innerHTML = `<p class="error" role="alert">${view.esc(err.message)}. Serve the folder over HTTP (npm run serve); file:// cannot fetch JSON.</p>`;
+  document.body.classList.add('is-load-failed'); // nothing to review: hide the empty hero, stats, tabs and the dead "Load your files" link
+  $('main').innerHTML = view.loadFailure(err, startSet !== 'demo', location.protocol === 'file:');
 }

@@ -42,6 +42,8 @@ The page opens with a seeded scenario: one rule on each dial setting.
 
 Under **Your data** at the bottom of the page, drop or choose a JSON file for any of the four inputs. Files you don't replace keep using the demo data. Each file is checked before it's used, and problems are listed in plain language under that file; a file with problems is never applied. Loading a file starts a new review, so export the log first if you want to keep it. **Reset to demo data** restores all four.
 
+A second built-in set, the stress test data in `data/stress/`, opens with `?data=stress` (for example https://drift-detector-psi.vercel.app/?data=stress). It's checked the same way as a file you load; if it fails, the page lists the problems instead of reviewing it.
+
 **`contract.json`**: the design system. Tokens plus one component contract. Must not contain dial settings.
 
 ```json
@@ -99,9 +101,10 @@ npm test             # Vitest, 42 tests on src/core
 
 ```
 index.html, styles.css   page and styles (light theme, Clarity palette as CSS custom properties)
-src/core/                pure logic, no DOM: session, decisions, proposals, file validation
+src/core/                pure logic, no DOM: session, decisions, proposals, file validation, built-in datasets
 src/ui/                  HTML templates (render.js) and event wiring (app.js)
 data/                    demo contract, policy, lint report and reasons
+data/stress/             stress test set, same four files (?data=stress)
 test/                    Vitest tests for src/core
 docs/                    screenshots
 ```

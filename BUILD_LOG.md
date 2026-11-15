@@ -554,3 +554,27 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 **How it was verified**
 - New `previews` e2e script at 1280, 1024, 900, 768, 700, 641, 640, 520, 390, 360 and 320px, with every card expanded. Per row it checks equal tile heights, a fixed stage with no overflow, the drawing centred within 2px, labels and captions aligned, and captions not clipped. From 390px up it also checks one stage height across all cards.
 - 89/89 unit tests. `redesign` 104/104, `fixes` 56/56, `stickybar` 32/32.
+
+## Stress test data as a second built-in dataset
+
+**What was built**
+- `data/stress/` holds a second set of the four files (provided by the project owner, added unchanged): 15 deviations, 6 color, 5 spacing, 4 variant, all on Ask or Block, 5 with no reason, long paths and snippets, an `rgba()` color, a two-value padding, a `size` prop alongside a variant, and an orphan reason.
+- `?data=stress` opens it; no param, or any other value, opens the demo. The source line reads "Using stress test data", and "Stress test data for the rest" after an upload.
+- `src/core/datasets.js` loads a built-in set through the same `validate.js` checks as an upload, then `createSession`. The demo now goes through them too.
+- **Reset to demo data** always returns to the demo and drops `?data=` from the URL, so a reload doesn't bring the stress set back.
+
+**Decisions**
+- **A built-in set that fails its checks doesn't load at all,** rather than mixing in demo files. The page lists every problem by file path (`data/stress/policy.json: …`) and links to the demo. The empty hero, stats, tabs and "Load your files" link are hidden in that state; before, an empty hero band showed above the error.
+- **Dataset logic lives in core with fetch passed in,** so it's unit-tested without a browser.
+- **The orphan reason (`dev-099`) is accepted and ignored,** the same as for an uploaded reasons file.
+
+**Problems the stress set exposed (open, not fixed in this change)**
+- **Amend for a non-hex color overflows its button.** For `rgba(37, 99, 235, 0.08)` the proposal falls back to one unbreakable line ("allow \`background: rgba(…);\` under no-hardcoded-color"), which runs past the Amend button at 1280px and is clipped.
+- **A long file path is clipped in the card header at 390px** (`src/features/billing/components/UpgradePlanBannerWithAnnualDiscountCallout.tsx:87`).
+- **The title is wrong when the hard-coded value equals the token:** "Text color #FFFFFF is a shade off color.surface (#FFFFFF)".
+
+**How it was verified**
+- 97/97 unit tests, including 8 new ones for `datasets.js`: param parsing (prototype keys like `?data=toString` fall back to the demo), paths, validation problems named by path, the report checked against the set's own contract, and a missing file.
+- New `stress` e2e script (19 checks, with a stand-in set served only by the harness): default demo, unknown values, stress source line and fetches, upload on top, Reset, a set that fails its checks, and missing files.
+- New `stress-real` e2e script on the real files at 1280px and 390px: 32 of 34 checks pass. It loads, with 15 found and 15 to decide. The badge reads Build blocked · 4, and the hero shows 1.1.0 with bars 6/5/4. Every card opens and every snippet has its marked value. The 5 missing reasons are flagged, and there's no page-wide sideways scroll. Preview tiles are equal height and Reject updates the badge. There are no console errors. The 2 failures are the clipping problems above.
+- `redesign`, `fixes`, `stickybar` and `previews` still pass.

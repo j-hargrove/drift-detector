@@ -4,6 +4,7 @@ import { DIALS, amendNeedsNote, autoAbsorbed, buildStatus, heldForReview, isDeci
 import { proposeChanges, resolveToken } from '../core/proposals.js';
 import { preview } from '../core/preview.js';
 import { flagRule, flagTitle } from '../core/explain.js';
+import { DATASETS } from '../core/datasets.js';
 import { icon, ruleIcon } from './icons.js';
 
 const DIAL_LABEL = { 'auto-fix': 'Auto-fix', ask: 'Ask', block: 'Block' };
@@ -515,14 +516,28 @@ export const SLOTS = [
   { kind: 'reasons', label: 'Reasons', help: 'The agent’s reason for each deviation.' },
 ];
 
-const sourceName = (source) => (source === 'demo' ? 'demo data' : `<code>${esc(source)}</code>`);
+// A source is { set } for a built-in dataset's file, or the name of a file the user loaded.
+const builtInLabel = (source) => DATASETS[source.set].label;
+const sourceName = (source) => (typeof source === 'object' ? builtInLabel(source) : `<code>${esc(source)}</code>`);
+const capitalise = (text) => text[0].toUpperCase() + text.slice(1);
 
 export function source(sources) {
-  const own = SLOTS.filter((s) => sources[s.kind] !== 'demo');
-  if (!own.length) return `Using demo data. <a href="#data">Load your own files</a>`;
+  const own = SLOTS.filter((s) => typeof sources[s.kind] === 'string');
+  const base = SLOTS.map((s) => sources[s.kind]).find((src) => typeof src === 'object');
+  if (!own.length) return `Using ${builtInLabel(base)}. <a href="#data">Load your own files</a>`;
   const list = own.map((s) => `${s.label.toLowerCase()} (${sourceName(sources[s.kind])})`).join(', ');
-  const rest = own.length < SLOTS.length ? ' Demo data for the rest.' : '';
+  const rest = base ? ` ${capitalise(builtInLabel(base))} for the rest.` : '';
   return `Using your ${list}.${rest} <a href="#data">Change files</a>`;
+}
+
+// A built-in dataset that failed to load or failed its checks.
+export function loadFailure(err, offerDemo, fromFile) {
+  const problems = err.problems ?? [];
+  return `<div class="load-failure" role="alert">
+    <p class="error">${icon('alert', 16)}<span>${esc(err.message)}.${fromFile ? ' Serve the folder over HTTP (npm run serve); file:// cannot fetch JSON.' : ''}</span></p>
+    ${problems.length ? `<ul>${problems.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
+    ${offerDemo ? `<p><a href="./">Open the demo data instead</a></p>` : ''}
+  </div>`;
 }
 
 export function loader(sources, loadErrors) {

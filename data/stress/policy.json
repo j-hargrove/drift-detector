@@ -1,0 +1,7 @@
+{
+  "dials": {
+    "no-hardcoded-color": "ask",
+    "no-arbitrary-spacing": "ask",
+    "no-off-contract-variant": "block"
+  }
+}
