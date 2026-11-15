@@ -56,6 +56,8 @@
 
   --column: 1080px;
   --motion: 150ms ease;
+  --stage-h: 120px;       /* preview stage, tiles side by side */
+  --stage-h-phone: 104px; /* preview tile, stacked under 640px (minimum) */
   --bar-clearance: 96px; /* sticky bar height plus a gap; app.js measures the real height */
   color-scheme: light;
 }
@@ -423,16 +425,18 @@ h3 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0; }
 
 /* Previews: the deviation drawn from contract tokens, true size. Drawn colors come from the contract. */
 .preview { display: grid; gap: 8px; }
-.preview__tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 12px; }
-.preview__tile { display: grid; grid-template-rows: 1fr auto auto; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+/* Tiles in a row are equal height: every stage is the same fixed height with the drawing centred in it,
+   and the tiles share their rows (subgrid), so labels and captions line up across the row. */
+.preview__tiles { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-rows: var(--stage-h) auto 1fr; column-gap: 12px; }
+.preview__tile { display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: 0; overflow: hidden; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
 .preview__stage {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  min-height: 112px;
-  padding: 20px 16px;
+  height: var(--stage-h);
+  padding: 0 16px;
   background-color: var(--stage);
   background-image: radial-gradient(var(--dot) 1px, transparent 1.2px);
   background-size: 12px 12px;
@@ -666,11 +670,14 @@ h3 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0; }
   .review__body { padding: 16px; }
   .why { grid-template-columns: minmax(0, 1fr); }
   /* Previews stack as rows: drawing beside its caption. */
-  .preview__tiles { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); gap: 8px; }
-  .preview__tile { grid-template-columns: 11.5rem minmax(0, 1fr); grid-template-rows: auto auto; align-items: center; }
-  .preview__stage { grid-row: span 2; min-height: 84px; height: 100%; padding: 12px 8px; border-bottom: 0; border-right: 1px solid var(--hairline); }
-  .preview__label { align-self: end; padding: 0 12px; }
-  .preview__caption { align-self: start; padding: 2px 12px 0; }
+  /* The drawing column is as wide as the widest drawing (shared through subgrid), every tile is the
+     same height (104px; on the narrowest phones, if a caption needs more, all the card's tiles grow
+     together), and the text starts at the same offset in each. */
+  .preview__tiles { grid-auto-flow: row; grid-template-columns: max-content minmax(0, 1fr); grid-template-rows: none; grid-auto-rows: 1fr; gap: 8px; }
+  .preview__tile { grid-row: auto; grid-column: 1 / -1; grid-template-columns: subgrid; grid-template-rows: auto auto 1fr; min-height: var(--stage-h-phone); }
+  .preview__stage { grid-row: 1 / -1; height: auto; padding: 0 12px; border-bottom: 0; border-right: 1px solid var(--hairline); }
+  .preview__label { padding: 14px 12px 0; }
+  .preview__caption { padding: 2px 12px 0; overflow-wrap: break-word; }
   .decide { padding: 12px; }
   /* A half-width button is narrower than the longest token, and tokens never break: the consequences
      move under the buttons at full width; the in-button copy stays in the accessible name. */

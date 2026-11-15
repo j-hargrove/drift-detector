@@ -537,3 +537,20 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - 89/89 unit tests (84 in this commit's tree; the rest are the uncommitted lint-contract tests).
 - New `stickybar` e2e script at 1280px and 390px, all checks passing: bar clear before scroll, no clipping ancestor, full width, tabs left / badge right in one row, red badge links to and focuses the blocking card, no second live region, no pill container, Set chip gone, mark is `"destructive"` with `0 2px` inline, stuck bar frosted with blur and hairline, "Build clear" white bordered, no console errors.
 - `redesign` (104/104) and `fixes` (57/57) still pass. The redesign checks for the white tab pill, the Set chip and the unquoted mark were updated to the new spec.
+
+## Preview tiles: equal height at every width
+
+**What changed**
+- **Side by side (above 640px):** every stage is a fixed 120px (`--stage-h`) with the drawing centred, and the tiles share their rows through CSS subgrid (stage, label, caption). Tiles in a row are the same height, and labels and captions start on the same line.
+- **Stacked (640px and under):** the drawing column is as wide as the widest drawing, shared through subgrid so the stage edges line up. Every tile in a card is the same height (at least 104px, `--stage-h-phone`), and the text starts at the same offset in each.
+
+**Problems found**
+- **641–900px: the Reject tile was 20px taller.** The stage had `min-height` and wrapping content, so the drawn white button (with its border and shadow) made its stage taller. That pushed its label and caption down. Desktop widths hid it because there the content fit 112px everywhere.
+- **Phones: tile heights followed caption length,** so "If you Reject" (one line) was shorter than the other two.
+
+**Decisions**
+- **On the narrowest phones (360px and below), tiles grow together rather than clip.** A fixed 104px clipped the variant captions at 360 and 320px. Tiles stay equal within a card, but the variant card's tiles are taller than the color card's. From 390px up every stage is the same height across all cards.
+
+**How it was verified**
+- New `previews` e2e script at 1280, 1024, 900, 768, 700, 641, 640, 520, 390, 360 and 320px, with every card expanded. Per row it checks equal tile heights, a fixed stage with no overflow, the drawing centred within 2px, labels and captions aligned, and captions not clipped. From 390px up it also checks one stage height across all cards.
+- 89/89 unit tests. `redesign` 104/104, `fixes` 56/56, `stickybar` 32/32.
