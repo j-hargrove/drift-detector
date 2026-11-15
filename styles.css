@@ -153,7 +153,9 @@ section { margin-top: var(--s-12); padding-top: var(--s-3); border-top: 1px soli
 main > section:first-child { margin-top: var(--s-6); padding-top: 0; border-top: 0; }
 h2 { font-size: var(--fs-heading); line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; margin-bottom: var(--s-3); }
 .hint { display: block; margin-top: var(--s-1); font-size: var(--fs-label); font-weight: 400; line-height: 1.5; letter-spacing: 0; color: var(--text-muted); }
-.section-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
+/* Heading plus one action. The heading's bottom margin moves to the row, so a wrapped action keeps it. */
+.section-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: var(--s-1) var(--s-2); margin-bottom: var(--s-3); }
+.section-head h2 { margin-bottom: 0; }
 
 /* The one accent action in a section (Export JSON). */
 .primary-button {
@@ -488,7 +490,6 @@ h3 { font-size: var(--fs-body); font-weight: 600; margin: 0; }
   .dial__help { grid-column: 1; }
   .entry { grid-template-columns: minmax(0, 1fr); }
   .slot { grid-template-columns: minmax(0, 1fr); }
-  .section-head { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {
