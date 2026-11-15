@@ -3,7 +3,7 @@
   "dev-003": "color.border disappeared on the grey settings background. #D1D5DB is the closest value that still shows.",
   "dev-004": "Hover tint for icon buttons. The contract has no subtle-fill token, so I used primary at 8% opacity.",
   "dev-005": "Product asked for a green Place order button to match the payment provider's checkout. Primary blue tested lower in their A/B run, per the ticket.",
-  "dev-007": "Icon-only buttons looked cramped at spacing.2 and oversized at spacing.3. 10px centres a 20px icon in a 40px target.",
+  "dev-007": "Icon-only buttons looked cramped at spacing.2 and oversized at spacing.3. 10px centers a 20px icon in a 40px target.",
   "dev-008": "Matched the 6px gap in the toolbar screenshot attached to the ticket.",
   "dev-009": "Large size needed more padding than spacing.4 alone allows on the horizontal axis.",
   "dev-012": "Delete account needs a destructive treatment. The contract has no destructive variant, and secondary reads as a safe action.",

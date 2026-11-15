@@ -24,6 +24,7 @@ The Reject/Amend decision is the dominant UI element. This is a portfolio piece;
 - `src/core/` holds pure logic, no DOM. `src/ui/` holds rendering. Keep them separate.
 - Vitest for tests on `src/core/` only (dev dependency). Nothing ships to the browser from node_modules (`vercel.json` skips install and build).
 - Static deploy to Vercel from `main`.
+- Portfolio screenshots live in `docs/screenshots/`, which Vercel skips (`.vercelignore`). `shots/` is a served copy (`/shots/<file>.png` on the live site); after retaking screenshots, copy them there too.
 - No backend, no persistence beyond JSON export. State lives in memory.
 - Keep it simple. Don't add abstractions the current phase doesn't need.
 
