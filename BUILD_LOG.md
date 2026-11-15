@@ -514,3 +514,5 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
   - collapse, expand and fold-back with focus; red used only for Block/blocked
   - AA contrast for every visible text element; no sideways scroll; decide animation; build clear styling; reduced motion
 - The `fixes` script was updated for collapsed rows, "+" lines and the indigo chip. It passes.
+- **Live recheck** (https://drift-detector-psi.vercel.app): redesign 104/104, fixes 56/56, decide-visible 24/24, all passing. One decide-visible assertion read the old "Follow-ups (1)" tab text and now reads label plus count chip; the counts were right.
+- **Screenshots** from production, desktop (1280px, 2×) and 390px, in `docs/redesign/`: top, the Block decision card, Record. The first top shot caught the tab fill mid-slide after scrolling back up, so it was retaken after a 400ms settle. That was a capture-timing artifact, not a page bug.
