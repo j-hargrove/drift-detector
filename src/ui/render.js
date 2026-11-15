@@ -1,23 +1,23 @@
 // HTML string templates. No DOM access here; app.js decides where they go.
 
-import { DIALS, amendNeedsNote, autoAbsorbed, isDecided } from '../core/session.js';
-import { proposeChange, resolveToken } from '../core/proposals.js';
+import { DIALS, amendNeedsNote, autoAbsorbed, heldForReview, isDecided } from '../core/session.js';
+import { proposeChanges, resolveToken } from '../core/proposals.js';
 import { flagRule, flagTitle } from '../core/explain.js';
 
 const DIAL_LABEL = { 'auto-fix': 'Auto-fix', ask: 'Ask', block: 'Block' };
 const DIAL_HELP = {
-  'auto-fix': 'Agent applies the token. You only see it in the log.',
+  'auto-fix': 'Agent applies the token. You only see it in the log, unless it gave no reason.',
   ask: 'You review each one. Nothing waits on it.',
   block: 'You review each one. The build stays blocked until you do.',
 };
 const RULE_LABEL = {
-  'no-hardcoded-color': 'Hard-coded colour',
+  'no-hardcoded-color': 'Hard-coded color',
   'no-arbitrary-spacing': 'Arbitrary spacing',
   'no-off-contract-variant': 'Off-contract variant',
 };
 // Short names for inline references, e.g. "Spacing in Button.tsx:12".
 const RULE_SHORT = {
-  'no-hardcoded-color': 'Colour',
+  'no-hardcoded-color': 'Color',
   'no-arbitrary-spacing': 'Spacing',
   'no-off-contract-variant': 'Variant',
 };
@@ -27,8 +27,14 @@ export const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
 const ruleLabel = (rule) => RULE_LABEL[rule] ?? rule;
-// Escaped, with a break opportunity after each dot, so "Button.allowedTokens.color" wraps at "." not mid-word.
-const breakable = (v) => esc(v).replace(/\./g, '.<wbr>');
+
+// A contract change as words and code tokens: add <code>color.danger</code> to <code>Button.allowedTokens.color</code>.
+// Code tokens don't wrap (CSS), so a line can only break at a space, before a token, never inside one.
+export function change(text) {
+  const m = /^add (.+) to (\S+)$/.exec(text);
+  return m ? `add <code>${esc(m[1])}</code> to <code>${esc(m[2])}</code>` : `<code>${esc(text)}</code>`;
+}
+const changeLines = (changes) => changes.map((c) => `<span class="change">${change(c)}</span>`).join('');
 
 // While blocked, the badge links to the first blocking card. It shows "Build blocked · N" so the sticky bar
 // stays one row; screen readers get the full sentence instead of the bare count.
@@ -125,6 +131,8 @@ function card(session, d, note, error) {
   const base = `review-${esc(d.id)}`;
   const noteId = `${base}-note`;
   const amendBlocked = needsNote && !note.trim();
+  const rejectEffect = `<span class="change">Code becomes <code>${esc(d.suggestedToken)}</code>${resolved ? ` <code>${esc(resolved)}</code>` : ''}</span>`;
+  const amendEffect = changeLines(proposeChanges(d, session.contract));
 
   const reason = d.agentReason
     ? `<dd class="reason__text">“${esc(d.agentReason)}”</dd>`
@@ -134,6 +142,7 @@ function card(session, d, note, error) {
     <article class="review" id="${base}" tabindex="-1" data-id="${esc(d.id)}" aria-labelledby="${base}-title">
       <h3 class="review__title" id="${base}-title">${esc(flagTitle(d, session.contract))}</h3>
       <p class="meta review__meta">${DIAL_LABEL[dial]} · ${esc(ruleLabel(d.rule))} · <code>${esc(d.file)}:${esc(d.line)}</code></p>
+      ${heldForReview(session, d) ? `<p class="review__held">No agent reason, so a person has to decide.</p>` : ''}
       <pre class="snippet" data-snippet><code>${esc(d.snippet)}</code></pre>
       <p class="meta snippet__more" hidden>The line continues. Scroll sideways to read it all.</p>
       <dl class="why">
@@ -149,12 +158,19 @@ function card(session, d, note, error) {
       <div class="decision">
         <button type="button" class="decide" data-action="reject" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:reject" aria-describedby="${base}-title">
           <span class="decide__head"><span class="decide__verb">Reject</span> <span class="decide__gloss">The code is wrong</span></span>
-          <span class="decide__effect">Code becomes <code>${breakable(d.suggestedToken)}</code>${resolved ? ` ${esc(resolved)}` : ''}</span>
+          <span class="decide__effect">${rejectEffect}</span>
         </button>
         <button type="button" class="decide" data-action="amend" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:amend" aria-describedby="${base}-title${needsNote ? ` ${base}-req` : ''}"${amendBlocked ? ' aria-disabled="true"' : ''}>
           <span class="decide__head"><span class="decide__verb">Amend</span> <span class="decide__gloss">The contract is wrong</span></span>
-          <span class="decide__effect">Contract: <code>${breakable(proposeChange(d, session.componentName))}</code></span>
+          <span class="decide__effect">${amendEffect}</span>
         </button>
+      </div>
+      <!-- Under 640px a half-width button is narrower than a token like Button.allowedTokens.color, and tokens
+           never break, so the consequences show here at full width instead. The buttons keep them in their
+           accessible names at every width, so this copy is hidden from screen readers. -->
+      <div class="decision__effects" aria-hidden="true">
+        <p class="decision__effect"><span class="decision__label">Reject:</span> ${rejectEffect}</p>
+        <div class="decision__effect"><span class="decision__label">Amend:</span>${amendEffect}</div>
       </div>
       <label class="note" for="${noteId}">
         <span>Note ${needsNote ? `<span class="note__req" id="${base}-req">required to amend. There is no agent reason, so yours would be the only one on record.</span>` : '(optional)'}</span>
@@ -164,27 +180,47 @@ function card(session, d, note, error) {
     </article>`;
 }
 
+const fileRef = ({ file, line }) => `${String(file).split('/').pop()}:${line}`;
+
 // Reject and Amend decisions whose code fix or contract change hasn't happened yet.
-export function followUps(log, resolving) {
+// `done` is the last follow-up marked done ({ entry, index }); its confirmation takes the item's place.
+export function followUps(log, resolving, done) {
+  const confirmation = done ? resolvedConfirmation(done.entry) : '';
   const decided = log.filter((e) => e.resolution);
   if (!decided.length) {
     return `<p class="empty">Nothing to follow up yet. Each Reject or Amend waits here until the code is fixed or the contract is updated.</p>`;
   }
   const open = decided.filter((e) => e.resolution.status === 'pending');
-  if (!open.length) return `<p class="empty">All follow-ups are done. See the log below.</p>`;
-  return `<ol class="follow-ups">${open
-    .map((e) => {
-      const amended = e.decision === 'amended';
-      return `
+  if (!open.length) return `${confirmation}<p class="empty">All follow-ups are done. See the log below.</p>`;
+  const items = open.map((e) => {
+    const amended = e.decision === 'amended';
+    const what = amended
+      ? `<ul class="changes">${e.proposedChange.map((c) => `<li>${change(c)}</li>`).join('')}</ul>`
+      : `<p class="changes"><code>${esc(e.file)}:${esc(e.line)}</code> becomes <code>${esc(e.suggestedFix)}</code></p>`;
+    return `
       <li>
-        <p><span class="follow-ups__kind">${amended ? 'Contract change' : 'Code fix'}</span> · ${amended
-          ? `<code>${esc(e.proposedChange)}</code>`
-          : `<code>${esc(e.file)}:${esc(e.line)}</code> becomes <code>${esc(e.suggestedFix)}</code>`}</p>
+        <p class="follow-ups__kind">${amended ? 'Contract change' : 'Code fix'}</p>
+        ${what}
         <p class="meta">${esc(shortRef(e))} · ${e.agentReason ? 'agent gave a reason' : '<span class="warn">no agent reason</span>'}${e.note ? ` · note: “${esc(e.note)}”` : ''}</p>
         ${resolveControl(e, 'follow', resolving)}
       </li>`;
-    })
-    .join('')}</ol>`;
+  });
+  if (confirmation) items.splice(Math.min(done.index, items.length), 0, `<li class="follow-ups__done">${confirmation}</li>`);
+  return `<ol class="follow-ups">${items.join('')}</ol>`;
+}
+
+// Same band as the Reject/Amend confirmation, e.g.
+// "Resolved: contract change in Settings.tsx:42. Moved to the decision log."
+export function resolvedText(e) {
+  return `Resolved: ${e.decision === 'amended' ? 'contract change' : 'code fix'} in ${fileRef(e)}.`;
+}
+
+function resolvedConfirmation(e) {
+  return `
+    <p class="decided" data-resolved="${esc(e.id)}">
+      <strong>Resolved:</strong> ${e.decision === 'amended' ? 'contract change' : 'code fix'} in ${esc(fileRef(e))}.
+      Moved to the <a href="#log-${esc(e.id)}" data-step="log-${esc(e.id)}" data-focus="resolved-link">decision log</a>.
+    </p>`;
 }
 
 const RESOLUTION = {
@@ -246,7 +282,9 @@ export function log(entries, resolving, session) {
         </div>
         <p class="entry__reason">${e.agentReason ? `“${esc(e.agentReason)}”` : '<span class="warn">No reason given</span>'}</p>
         <div class="entry__outcome">
-          <p>${e.proposedChange ? 'Contract' : 'Fix'}: <code>${esc(e.proposedChange ?? e.suggestedFix)}</code></p>
+          ${e.proposedChange
+            ? `<div><p>Contract:</p><ul class="changes">${e.proposedChange.map((c) => `<li>${change(c)}</li>`).join('')}</ul></div>`
+            : `<p>Fix: <code>${esc(e.suggestedFix)}</code></p>`}
           ${e.note ? `<p>Note: ${esc(e.note)}</p>` : ''}
           ${e.resolution ? resolution(e, resolving) : ''}
         </div>

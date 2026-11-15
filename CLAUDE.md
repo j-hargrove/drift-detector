@@ -32,7 +32,7 @@ Four input files in `data/`:
 
 1. `contract.json`: tokens (color, spacing, radius) + one component contract (Button: variants, states, sizes, allowed tokens). **Contains no dial settings**; `createSession` rejects a contract with a `dials` key.
 2. `policy.json`: `{ "dials": { rule: "auto-fix" | "ask" | "block" } }`, the default autonomy per rule. Unknown dial values are rejected.
-3. `lint-report.json`: deviations, each with `id`, `rule`, `file`, `line`, `snippet`, `suggestedToken`.
+3. `lint-report.json`: deviations, each with `id`, `rule`, `file`, `line`, `snippet`, `suggestedToken`, and optionally `alsoAllowTokens` (token paths an Amend must also allow, e.g. `["color.danger"]` for a destructive variant). Each path must exist in the contract; `validate.js` checks the shape and, given the contract in use, existence, and `createSession` refuses a mismatch.
 4. `reasons.json`: keyed by deviation `id`, value is the agent's stated reason. A missing key means "No reason given" and is visibly flagged.
 
 The demo files load by default. Users can load their own version of any of the four files (file picker or drag and drop, one slot per file). Each file is checked by `src/core/validate.js` before use, and problems are shown inline in plain language; a file with problems is not applied. Loading a file starts a new review. "Reset to demo data" restores all four.
@@ -47,11 +47,14 @@ These are defaults; the user can change any dial.
 
 ## Behaviors
 - **Auto-fix**: deviation absorbed silently, applies `suggestedToken`, logged with decision `auto-absorbed`. The Autonomy Dial shows a count of auto-absorbed deviations that links to their log entries.
+  - A deviation with **no agent reason is never auto-absorbed**. It stays in Decide under any dial, and its card says "No agent reason, so a person has to decide." Its log entry records `dialSetting: "auto-fix"`.
+  - Deviations absorbed because a dial was turned to Auto-fix **during the session** (not by the loaded policy) return to Decide if that dial is moved to Ask or Block. Their auto-absorbed entries are removed. Policy-absorbed deviations stay absorbed, and Reject/Amend decisions never move.
 - **Ask**: shown as a review card. Human chooses Reject or Amend.
 - **Block**: shown as a review card. A persistent "Build blocked" status stays red until every blocked deviation is resolved. While blocked, the badge is a link that scrolls to and focuses the first blocking card. It reads "Build blocked · N" so the sticky bar stays one row on desktop. The count is `aria-hidden`, and screen readers get the full sentence instead ("1 blocked deviation needs a decision").
 - **Reject**: code is wrong; logged with the suggested fix.
-- **Amend**: contract is wrong; log records the proposed contract change (e.g. "add #3B82F6 to Button.allowedTokens.color").
+- **Amend**: contract is wrong; log records every proposed contract change as a list (e.g. `["add \"destructive\" to Button.variants", "add color.danger to Button.allowedTokens.color"]`). Extra tokens come from `alsoAllowTokens`; ones the component already allows are skipped.
 - Amending a deviation with no agent reason requires a human note. That's the riskiest decision in the app. Enforced in core, not only the UI.
+- After Mark fixed / Mark applied in Follow-ups, the same kind of confirmation takes the item's place ("Resolved: contract change in Settings.tsx:42. Moved to the decision log.", linking to the log entry), gets focus, and is announced through the polite live region. Resolving from the log just flips the chip.
 - After Reject or Amend, a confirmation ("Rejected: … Moved to Follow-ups as a code fix to do.") takes the decided card's place, with a link to Follow-ups, and gets focus. It stays until the next decision. A second Reject/Amend within 500ms of a decision is ignored (double-click guard), and focus goes back to the confirmation.
 - Changing a dial after decisions are made re-evaluates only undecided deviations.
 - A rule with no dial in `policy.json` falls back to **Ask**, never Auto-fix.
@@ -62,7 +65,7 @@ Top to bottom:
 2. **Meta line** (small): mode · rule name · file:line. No rule id.
 3. **Snippet** on an ice block. It scrolls sideways rather than wrapping; when it overflows, a "The line continues. Scroll sideways to read it all." line appears under it and the snippet becomes keyboard-focusable.
 4. Two labelled lines: **Why it was flagged** (the contract rule in plain language, `flagRule`) and **Why the agent did it** (the agent's reason, or "No reason given" in `--danger`).
-5. **Reject | Amend**. Each button has two lines: the verb with its meaning ("Reject · The code is wrong"), then the consequence ("Code becomes color.primary #2563EB"). Token paths break only after a "." Then the note.
+5. **Reject | Amend**. Each button has two lines: the verb with its meaning ("Reject · The code is wrong"), then the consequence ("Code becomes color.primary #2563EB"), one line per contract change. Code tokens are `nowrap`: a line breaks only at a space, before a token, never inside one. Under 640px a half-width button is narrower than the longest token, so the consequences show full-width under the buttons instead (`aria-hidden`; the in-button copy stays in each button's accessible name). Then the note.
 
 Each card is a contained panel: `--surface`, a 1px `--rule` border, 24px padding (16px under 640px), 24px between cards. After a decision, the confirmation band takes the card's place with the same 24px gap.
 
@@ -72,7 +75,7 @@ Masthead (title, intro, data source) → sticky bar (step tabs, build status) �
 Decision log entries lead with the same plain-language title as their card. Decision, dial and time come next, then file path and id as metadata. The Autonomy Dial is one bordered segmented control per rule, and the help text lines up with its left edge. Content sits in a 760px reading column.
 
 ## Decision log entry
-`id, rule, file, line, snippet, agentReason (or null), dialSetting, decision (auto-absorbed | rejected | amended), suggestedFix (rejected and auto-absorbed only), proposedChange (amend only), note, timestamp, resolution (rejected and amended only)`. Export as JSON.
+`id, rule, file, line, snippet, agentReason (or null), dialSetting, decision (auto-absorbed | rejected | amended), suggestedFix (rejected and auto-absorbed only), proposedChange (amend only; a list of every contract change), note, timestamp, resolution (rejected and amended only)`. Export as JSON.
 
 `resolution` is `{ status: "pending" | "resolved", at, note }`. New Reject and Amend entries start `pending` with `at` and `note` null. `resolve` sets `resolved`, the time and an optional note; `reopen` returns it to `pending` and clears both. Auto-absorbed entries have no `resolution`: the agent already applied the token, so there's nothing to follow up.
 
@@ -90,17 +93,17 @@ Decision log entries lead with the same plain-language title as their card. Deci
   5. Metadata (rule id, dial, timestamps): smallest, muted.
   Section headings (h2) use `--fs-section` (24px), between card text and the 32px page title.
 - **Reject and Amend buttons are identical** (same outline, size, weight), side by side at every width, so the UI doesn't suggest an answer.
-- **Palette: Clarity.** Paper `#F2EFEA`, ice `#DFE5F3`, slate `#557373`, olive-dark `#272401`, ink `#0D0D0D`, plus one muted red. Every colour in `styles.css` is a custom property; no hex values outside `:root`. Contrast ratios are listed in `BUILD_LOG.md` (Clarity re-theme).
-  - `--bg` `#F2EFEA` (paper): page, and Reject/Amend and the note field inside cards. `--surface` `#F9F7F5` (paper half-way to white): review card panels, resolved chip.
+- **Palette: Clarity.** Paper `#F2EFEA`, ice `#DFE5F3`, slate `#557373`, olive-dark `#272401`, ink `#0D0D0D`, plus one muted red and one muted green. Every colour in `styles.css` is a custom property; no hex values outside `:root`. Contrast ratios are listed in `BUILD_LOG.md` (Clarity re-theme).
+  - `--bg` `#F2EFEA` (paper): page, and Reject/Amend and the note field inside cards. `--surface` `#F9F7F5` (paper half-way to white): review card panels, resolved chip background.
   - `--text` `#0D0D0D` (ink). `--text-muted` `#706E57`: olive-dark tinted toward white, the lightest value that holds 4.5:1 on both `--bg` (4.51) and `--surface` (4.84). It's only 4.10:1 on ice, so it's never used on `--tint`; text there is `--text`.
   - `--accent` `#557373` (slate): borders, underlines, focus ring, active dial, Reject/Amend hover fill. It's 4.48:1 on paper, so it's never used for small text on `--bg`.
   - `--accent-text` `#4A6666`: links and small accent text (5.41:1 on paper, 4.92:1 on ice).
   - `--tint` `#DFE5F3` (ice): selected dial segment, code snippets, confirmation band, auto-fix summary line, pending chip. Text on ice is `--text` or `--accent-text`, never `--text-muted`.
-  - `--resolved` `#557373` (slate): resolved chip text and border, always on `--surface` (4.81:1).
+  - `--success` `#44704C` (muted green): resolved chip text and border only, on `--surface` (5.36:1; 4.99:1 on paper). The only green.
   - `--danger` `#9B3B2B`: Build blocked, the selected Block dial, missing agent reasons, validation errors. The only red.
   - `--rule` `#C9C6BB` (paper with 20% olive-dark): thin section rules, card borders, drop-zone outlines. Decorative only; never the only cue for a control.
   - Text on an accent fill uses `--surface`, not paper: paper on slate is 4.48:1.
-- **System.** System UI face plus monospace; type scale 13 / 16 / 20 / 24 / 32 (`--fs-1`, `--fs-2`, `--fs-3`, `--fs-section`, `--fs-4`); spacing on an 8px scale (no 4px half-steps); 760px reading column. Sections are separated by whitespace (48px) and thin rules. The first section has no rule, because the sticky bar's border sits above it. Review cards are the one contained panel (see Review card anatomy). Nothing else uses cards. No coloured borders except the dial control and Reject/Amend (slate), and no shadows, gradients, pills, emoji or uppercase eyebrows. Ice bands with the 4px radius are allowed for the confirmation and the auto-fix summary line, as are resolution chips (a text label with the 4px radius, not a pill; pending is ice-filled, resolved is a slate outline on surface).
+- **System.** System UI face plus monospace; type scale 13 / 16 / 20 / 24 / 32 (`--fs-1`, `--fs-2`, `--fs-3`, `--fs-section`, `--fs-4`); spacing on an 8px scale (no 4px half-steps); 760px reading column. Sections are separated by whitespace (48px) and thin rules. The first section has no rule, because the sticky bar's border sits above it. Review cards are the one contained panel (see Review card anatomy). Nothing else uses cards. No coloured borders except the dial control and Reject/Amend (slate), and no shadows, gradients, pills, emoji or uppercase eyebrows. Ice bands with the 4px radius are allowed for the confirmation and the auto-fix summary line, as are resolution chips (a text label with the 4px radius, not a pill; pending is ice-filled, resolved is a green outline on surface).
 
 ## Phases
 1. Core logic and seed data. Done.

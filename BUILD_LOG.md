@@ -397,3 +397,33 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
   - **Screen readers:** the visible "· 1" is `aria-hidden`, and a visually hidden span carries the full sentence. The link's accessible name is "Build blocked 1 blocked deviation needs a decision", with no bare "1".
   - **Verified:** a new `badge` e2e script at 1280, 1024 and 390px checks the visible text (excluding hidden text), the screen-reader sentence, the hidden count, one row on desktop, and that the badge still focuses the blocking card. All pass.
   - **Problem in my own check:** `innerText` counts clipped screen-reader text, so the first version read both the visible text and the sentence. That also exposed a missing space in the markup ("Build blocked· 1" when copied), now fixed.
+
+## Oversight and copy fixes (2026-11-14)
+
+**Scope:** six fixes: two limits on Auto-fix, Amends that need more than one contract change, consequence text that broke inside tokens, a green resolved chip, a confirmation after Mark fixed / Mark applied, and US spelling.
+
+**Done**
+1. **Auto-fix no longer absorbs what a person should see.**
+   - **No reason, no auto-fix.** A deviation with no agent reason stays in Decide under any dial. Its card adds "No agent reason, so a person has to decide." Core decides this (`canAutoFix`, `heldForReview`), so `reject`/`amend` accept it under Auto-fix and log `dialSetting: "auto-fix"`. The dial help says "…unless it gave no reason."
+   - **Session dial changes are reversible.** Ids absorbed because someone turned a dial to Auto-fix during the review are tracked in `session.dialAbsorbed`. Moving that dial to Ask or Block removes their auto-absorbed entries, so they return to Decide (and to the build count under Block). Policy-absorbed deviations stay absorbed, and Reject/Amend decisions never move. The live region says how many returned.
+2. **`alsoAllowTokens`** on lint-report deviations (optional list of token paths). `proposeChanges` returns every change: the one the snippet implies, plus one per extra token the component doesn't already allow. `proposedChange` in the log is now a list. dev-005 lists `color.danger`, so its Amend reads:
+   - add "destructive" to Button.variants
+   - add color.danger to Button.allowedTokens.color
+
+   The card, Follow-ups and log show each change on its own line. `validate.js` checks the shape always, and existence against the contract in use when one is passed. `createSession` refuses a report whose tokens the contract lacks, which covers loading a new contract under an existing report.
+3. **Tokens never break.** Consequences are now words plus `<code>` tokens with `white-space: nowrap`, so lines break only at a space, before a token. The `<wbr>`-after-dot approach is gone; it was what split `Button.` / `variants`.
+4. **Resolved chip is green.** New `--success` `#44704C`: 5.36:1 on `--surface`, 4.99:1 on paper. It replaces the slate `--resolved`.
+5. **Resolve confirmation.** Mark fixed / Mark applied in Follow-ups puts "Resolved: contract change in Settings.tsx:42. Moved to the decision log." in the item's place, the same band as the decision confirmation. Its link to the log entry gets focus, and the same sentence goes through the polite live region.
+6. **"colour" → "color"** in all UI copy, explain.js output, comments and the README.
+
+**Decisions**
+- **Under 640px, the consequences move out of the buttons.** At 390px a half-width button has 134px for text. `Button.allowedTokens.color` is 204px at 13px mono, and even `variant="secondary"` is 149px. Unbreakable tokens, identical side-by-side buttons and consequences inside the buttons can't all hold at that width. So under 640px the buttons show only "Reject · The code is wrong" / "Amend · The contract is wrong". A full-width block under them lists "Reject:" and "Amend:" with their changes. That block is `aria-hidden`, because the in-button copy is visually hidden there but stays in each button's accessible name. Screen readers hear the same thing at every width. At 641px the narrowest button still has ~236px, so the breakpoint holds.
+- **The green chip adds a second accent colour.** The request said "the existing green/success token", but the palette had none (the chip was slate). I added one muted green, used only for the resolved chip.
+- **Returned deviations leave no log entry.** An absorption undone by the same session's dial change was never a decision anyone stood by, and keeping it would make `isDecided` true. If an audit trail of dial moves is wanted, it belongs in a separate event list, not the decision log.
+- **`proposedChange` keeps its name but is now a list**, rather than being renamed. It changes the export shape either way, and keeping the name keeps the schema recognisable.
+- **The resolve confirmation is for Follow-ups only.** Resolving from the log already flips the chip in place, under the pointer.
+
+**How it was verified**
+- 76/76 tests pass (59 before). New tests cover the no-reason rule on load and mid-session, deciding a held deviation, returning to Ask and to Block, policy-absorbed items staying put, decided items not moving, multi-change Amend, skipping already-allowed tokens, and `alsoAllowTokens` validation (shape, existence, seed file).
+- **New `fixes` e2e script**, 28 checks at each of 1280px and 390px, all passing. It covers: no "colour" in the page; dev-005 Amend lists both changes; code tokens `nowrap`; no line break inside a token and no token spilling out of its box (measured per character); buttons side by side; no sideways scroll; held card and its line; absorb, return and announcements; policy-absorbed spacing staying put; changes listed in Follow-ups and the log; the resolve confirmation text, position, focus, link and live-region text; chip colour; no console errors.
+- **Problem in my own check:** the classifier blocked starting a local HTTP server, so the script serves the repo files through Playwright request interception instead.

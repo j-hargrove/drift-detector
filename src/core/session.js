@@ -2,8 +2,13 @@
 // operation returns a new session and never mutates the one passed in.
 // Dials come from policy.json, never from the contract. Amend only proposes
 // contract changes; it cannot alter dials.
+//
+// Auto-fix has two limits. A deviation with no agent reason is never absorbed:
+// nobody has explained it, so a person decides. And deviations absorbed because
+// someone turned a dial to Auto-fix during the session (rather than by the loaded
+// policy) go back to review if that dial is turned back to Ask or Block.
 
-import { proposeChange } from './proposals.js';
+import { proposeChanges, resolveToken } from './proposals.js';
 
 export const DIALS = ['auto-fix', 'ask', 'block'];
 
@@ -15,7 +20,12 @@ const isoNow = () => new Date().toISOString();
 export function createSession({ contract, report, reasons = {}, policy = {}, now = isoNow }) {
   validateInputs(contract, policy);
   const dials = policy.dials ?? {};
-  const deviations = report.deviations.map((d) => ({ ...d, agentReason: normalizeReason(reasons[d.id]) }));
+  const deviations = report.deviations.map((d) => ({
+    ...d,
+    alsoAllowTokens: d.alsoAllowTokens ?? [],
+    agentReason: normalizeReason(reasons[d.id]),
+  }));
+  assertTokensExist(contract, deviations);
   const rules = [...new Set(deviations.map((d) => d.rule))];
   const resolvedDials = Object.fromEntries(rules.map((r) => [r, dials[r] ?? FALLBACK_DIAL]));
   rules.forEach((r) => assertDial(resolvedDials[r]));
@@ -27,15 +37,21 @@ export function createSession({ contract, report, reasons = {}, policy = {}, now
     rules,
     dials: resolvedDials,
     log: [],
+    dialAbsorbed: [], // ids absorbed because a dial was changed in this session, not by the policy
   };
-  return absorbUndecided(session, now);
+  return absorbUndecided(session, now).session;
 }
 
-// Only undecided deviations are re-evaluated; logged decisions stand.
+// Only undecided deviations are re-evaluated; Reject and Amend decisions stand.
+// Moving a dial off Auto-fix returns what this session's dial change absorbed;
+// what the loaded policy absorbed stays absorbed.
 export function setDial(session, rule, dial, now = isoNow) {
   assertDial(dial);
   if (!session.rules.includes(rule)) throw new Error(`Unknown rule: ${rule}`);
-  return absorbUndecided({ ...session, dials: { ...session.dials, [rule]: dial } }, now);
+  const next = { ...session, dials: { ...session.dials, [rule]: dial } };
+  if (dial !== 'auto-fix') return returnToReview(next, rule);
+  const { session: absorbed, ids } = absorbUndecided(next, now);
+  return { ...absorbed, dialAbsorbed: [...session.dialAbsorbed, ...ids] };
 }
 
 export function reject(session, id, { note = '', now = isoNow } = {}) {
@@ -68,15 +84,25 @@ export function amendNeedsNote(deviation) {
   return deviation.agentReason === null;
 }
 
+// Auto-fix applies only to deviations the agent explained.
+export function canAutoFix(session, deviation) {
+  return session.dials[deviation.rule] === 'auto-fix' && deviation.agentReason !== null;
+}
+
+// Under Auto-fix, but held for a person because the agent gave no reason.
+export function heldForReview(session, deviation) {
+  return session.dials[deviation.rule] === 'auto-fix' && deviation.agentReason === null;
+}
+
 export function isDecided(session, id) {
   return session.log.some((e) => e.id === id);
 }
 
 // Deviations waiting on a human, blocked ones first.
 export function reviewQueue(session) {
-  const rank = { block: 0, ask: 1 };
+  const rank = { block: 0, ask: 1, 'auto-fix': 2 };
   return session.deviations
-    .filter((d) => !isDecided(session, d.id) && session.dials[d.rule] !== 'auto-fix')
+    .filter((d) => !isDecided(session, d.id) && !canAutoFix(session, d))
     .sort((a, b) => rank[session.dials[a.rule]] - rank[session.dials[b.rule]]);
 }
 
@@ -105,7 +131,7 @@ export function exportLog(session, now = isoNow) {
 
 function decide(session, id, decision, note, now) {
   const deviation = findUndecided(session, id);
-  if (session.dials[deviation.rule] === 'auto-fix') {
+  if (canAutoFix(session, deviation)) {
     throw new Error(`${id} is under auto-fix and is not up for review.`);
   }
   return { ...session, log: [...session.log, logEntry(session, deviation, decision, note, now)] };
@@ -126,9 +152,27 @@ function withResolution(session, id, resolution) {
 
 function absorbUndecided(session, now) {
   const absorbed = session.deviations
-    .filter((d) => !isDecided(session, d.id) && session.dials[d.rule] === 'auto-fix')
+    .filter((d) => !isDecided(session, d.id) && canAutoFix(session, d))
     .map((d) => logEntry(session, d, 'auto-absorbed', '', now));
-  return absorbed.length ? { ...session, log: [...session.log, ...absorbed] } : session;
+  return {
+    session: absorbed.length ? { ...session, log: [...session.log, ...absorbed] } : session,
+    ids: absorbed.map((e) => e.id),
+  };
+}
+
+// Auto-absorbed entries carry no Reject/Amend, so returning them only removes the absorption.
+function returnToReview(session, rule) {
+  const back = new Set(
+    session.log
+      .filter((e) => e.rule === rule && e.decision === 'auto-absorbed' && session.dialAbsorbed.includes(e.id))
+      .map((e) => e.id),
+  );
+  if (!back.size) return session;
+  return {
+    ...session,
+    log: session.log.filter((e) => !back.has(e.id)),
+    dialAbsorbed: session.dialAbsorbed.filter((id) => !back.has(id)),
+  };
 }
 
 function logEntry(session, d, decision, note, now) {
@@ -143,7 +187,7 @@ function logEntry(session, d, decision, note, now) {
     dialSetting: session.dials[d.rule],
     decision,
     suggestedFix: amended ? null : d.suggestedToken,
-    proposedChange: amended ? proposeChange(d, session.componentName) : null,
+    proposedChange: amended ? proposeChanges(d, session.contract) : null,
     note: note.trim() || null,
     timestamp: now(),
   };
@@ -167,6 +211,17 @@ function validateInputs(contract, policy) {
     throw new Error('policy.dials must be an object of rule → dial setting.');
   }
   Object.values(dials).forEach(assertDial);
+}
+
+// alsoAllowTokens must name tokens the contract defines, or Amend would propose nonsense.
+function assertTokensExist(contract, deviations) {
+  for (const d of deviations) {
+    if (!Array.isArray(d.alsoAllowTokens)) throw new Error(`${d.id}: "alsoAllowTokens" must be a list of token paths.`);
+    const missing = d.alsoAllowTokens.find((path) => resolveToken(contract, path) === null);
+    if (missing) {
+      throw new Error(`The lint report asks to also allow "${missing}" for ${d.id}, but the contract has no such token.`);
+    }
+  }
 }
 
 function assertDial(dial) {

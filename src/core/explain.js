@@ -10,14 +10,14 @@ const PX = /\b\d+(?:\.\d+)?px\b/g;
 const VARIANT = /variant=["']([^"']+)["']/;
 const PROPERTY = /^\s*([a-z-]+)\s*:/i;
 
-// Within this RGB distance a colour reads as "a shade off" its token.
-const NEAR_COLOUR = 60;
+// Within this RGB distance a color reads as "a shade off" its token.
+const NEAR_COLOR = 60;
 
 const PROPERTY_LABEL = {
   background: 'Fill',
   'background-color': 'Fill',
-  color: 'Text colour',
-  'border-color': 'Border colour',
+  color: 'Text color',
+  'border-color': 'Border color',
   border: 'Border',
   fill: 'Icon fill',
   stroke: 'Icon stroke',
@@ -37,12 +37,12 @@ export function flagTitle(deviation, contract) {
     const hex = snippet.match(HEX)?.[0]?.toUpperCase();
     if (hex) {
       const named = tokenWithValue(contract, 'color', hex);
-      if (named) return `${label ?? 'Colour'} ${hex} is ${named}, which ${component} doesn’t use`;
+      if (named) return `${label ?? 'Color'} ${hex} is ${named}, which ${component} doesn’t use`;
       const target = resolveToken(contract, suggestedToken);
-      if (target && distance(hex, target) <= NEAR_COLOUR) {
-        return `${label ?? 'Colour'} ${hex} is a shade off ${suggestedToken} (${target.toUpperCase()})`;
+      if (target && distance(hex, target) <= NEAR_COLOR) {
+        return `${label ?? 'Color'} ${hex} is a shade off ${suggestedToken} (${target.toUpperCase()})`;
       }
-      return `${label ?? 'Colour'} ${hex} isn’t a ${component} colour${target ? `; the fix is ${suggestedToken} (${target.toUpperCase()})` : ''}`;
+      return `${label ?? 'Color'} ${hex} isn’t a ${component} color${target ? `; the fix is ${suggestedToken} (${target.toUpperCase()})` : ''}`;
     }
   }
 
@@ -76,8 +76,8 @@ export function flagRule(deviation, contract) {
   if (deviation.rule === 'no-hardcoded-color') {
     const tokens = allowed.color ?? [];
     return tokens.length
-      ? `${component} may only use the ${tokens.length} colour tokens in the contract, such as ${tokens[0]}. A hard-coded colour skips them, so it won’t change when the tokens do.`
-      : `${component} colours must come from the contract’s tokens. A hard-coded colour skips them, so it won’t change when the tokens do.`;
+      ? `${component} may only use the ${tokens.length} color tokens in the contract, such as ${tokens[0]}. A hard-coded color skips them, so it won’t change when the tokens do.`
+      : `${component} colors must come from the contract’s tokens. A hard-coded color skips them, so it won’t change when the tokens do.`;
   }
   if (deviation.rule === 'no-arbitrary-spacing') {
     const scale = allowedScale(contract, 'spacing');

@@ -1,6 +1,6 @@
 :root {
-  /* Colour: the Clarity palette. Paper #F2EFEA, ice #DFE5F3, slate #557373,
-     olive-dark #272401, ink #0D0D0D, plus one muted red. Ratios in BUILD_LOG.md. */
+  /* Color: the Clarity palette. Paper #F2EFEA, ice #DFE5F3, slate #557373,
+     olive-dark #272401, ink #0D0D0D, plus one muted red and one muted green. Ratios in BUILD_LOG.md. */
   --bg: #f2efea;          /* paper */
   --surface: #f9f7f5;     /* paper, half-way to white: inputs, buttons, chips */
   --text: #0d0d0d;        /* ink */
@@ -9,7 +9,7 @@
   --accent: #557373;      /* slate: borders, underlines, focus ring, active dial, button fill. 3:1+ for UI, not for small text */
   --accent-text: #4a6666; /* slate, darkened: links and small accent text. 5.41:1 on --bg */
   --tint: #dfe5f3;        /* ice: selected dial segment, auto-fix summary line, pending chip */
-  --resolved: #557373;    /* slate: resolved chip, on --surface only (4.81:1) */
+  --success: #44704c;     /* muted green: the resolved chip only. 5.36:1 on --surface, 4.99:1 on --bg */
   --danger: #9b3b2b;      /* muted red: Build blocked, Block, missing reasons, errors */
 
   /* Type: one family plus monospace, five sizes. */
@@ -187,6 +187,8 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .review__title { font-size: var(--fs-2); font-weight: 600; line-height: 1.4; }
 .review__meta { margin-top: calc(-1 * var(--s-1)); overflow-wrap: anywhere; }
 .review__meta code { color: inherit; }
+/* Auto-fix with no agent reason: says why this card is here at all. */
+.review__held { margin-top: calc(-1 * var(--s-1)); font-size: var(--fs-1); font-weight: 600; }
 .loc { color: var(--text-muted); }
 /* Ice block sets code apart from the surface panel. One line of code scrolls rather than wraps;
    when it overflows, app.js shows the "scroll sideways" cue below it and makes it keyboard-scrollable. */
@@ -220,9 +222,13 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .decide__head { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; column-gap: var(--s-1); }
 .decide__verb { font-size: var(--fs-3); font-weight: 650; line-height: 1.3; }
 .decide__gloss { font-size: var(--fs-1); }
-/* Token paths carry <wbr> after each dot, so they break at "." rather than mid-word. */
-.decide__effect { max-width: 100%; font-size: var(--fs-1); overflow-wrap: break-word; }
+/* One line per change. Code tokens never wrap, so a line breaks only at a space, before a token. */
+.decide__effect { display: grid; gap: 0; max-width: 100%; font-size: var(--fs-1); }
 .decide__effect code { color: inherit; }
+.change { display: block; }
+.change code, .changes code { white-space: nowrap; }
+/* The narrow-screen copy of the consequences; see the media query. */
+.decision__effects { display: none; }
 /* Surface text, not paper: paper on slate is 4.48:1, under AA for the 13px lines. */
 .decide:hover:not([aria-disabled="true"]) { background: var(--accent); color: var(--surface); }
 .decide:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -248,8 +254,9 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 /* Follow-ups */
 .follow-ups { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--s-3); }
 .follow-ups li { display: grid; gap: var(--s-1); justify-items: start; }
-.follow-ups code { overflow-wrap: anywhere; }
 .follow-ups__kind { font-weight: 600; }
+.follow-ups li.follow-ups__done { display: block; }
+.changes { margin: 0; padding: 0; list-style: none; }
 
 /* Resolution: did the code fix or contract change actually happen? */
 .resolution { display: grid; gap: var(--s-1); justify-items: start; padding-top: var(--s-1); }
@@ -263,7 +270,7 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   font-size: var(--fs-1);
   line-height: 1.7;
 }
-.chip--resolved { border-color: var(--resolved); background: var(--surface); color: var(--resolved); font-weight: 600; }
+.chip--resolved { border-color: var(--success); background: var(--surface); color: var(--success); font-weight: 600; }
 .resolve-form { display: grid; gap: var(--s-1); width: 100%; font-size: var(--fs-1); color: var(--text-muted); }
 .resolve-form input {
   width: 100%;
@@ -289,7 +296,7 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 }
 .slot:first-child { padding-top: 0; }
 .slot + .slot { border-top: 1px solid var(--rule); }
-/* Least-used section, so the lightest shapes: a rule-coloured dashed outline, no fill.
+/* Least-used section, so the lightest shapes: a rule-colored dashed outline, no fill.
    The "choose a file" link identifies the control; hover and focus bring the accent back. */
 .drop {
   display: block;
@@ -342,6 +349,7 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .entry__head strong { font-weight: 600; }
 .entry__reason { max-width: 60ch; }
 .entry__outcome { display: grid; gap: var(--s-1); align-content: start; font-size: var(--fs-1); overflow-wrap: anywhere; }
+.entry__outcome .changes { overflow-wrap: normal; }
 
 @media (max-width: 640px) {
   .masthead { padding-top: var(--s-4); }
@@ -353,6 +361,15 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   .status__detail { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .review { padding: var(--s-2); }
   .decide { padding: var(--s-1); }
+  /* A half-width button is narrower than the longest token here, and tokens never break. The consequences
+     move under the buttons at full width; the in-button copy stays in the accessible name. */
+  .decide__effect { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .decision__effects { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-1); font-size: var(--fs-1); }
+  /* Labels in one column, every change line in the other. */
+  .decision__effect { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; row-gap: 0; }
+  .decision__effect .change { grid-column: 2; }
+  .decision__label { font-weight: 600; }
+  .decision__effect code { color: inherit; }
   .dial { grid-template-columns: minmax(0, 1fr); }
   .dial__rule { grid-row: auto; margin-bottom: var(--s-1); }
   .dial__help { grid-column: 1; }

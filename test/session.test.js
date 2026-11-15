@@ -7,13 +7,15 @@ import {
   createSession,
   exportLog,
   followUps,
+  heldForReview,
+  isDecided,
   reject,
   reopen,
   resolve,
   reviewQueue,
   setDial,
 } from '../src/core/session.js';
-import { proposeChange, resolveToken } from '../src/core/proposals.js';
+import { proposeChange, proposeChanges, resolveToken } from '../src/core/proposals.js';
 
 const load = (name) => JSON.parse(readFileSync(new URL(`../data/${name}.json`, import.meta.url)));
 const seed = () => ({
@@ -75,7 +77,7 @@ describe('decisions', () => {
     const s = amend(start(), 'dev-001', { now: clock });
     expect(s.log.at(-1)).toMatchObject({
       decision: 'amended',
-      proposedChange: 'add #3B82F6 to Button.allowedTokens.color',
+      proposedChange: ['add #3B82F6 to Button.allowedTokens.color'],
       suggestedFix: null,
       note: null,
     });
@@ -112,12 +114,12 @@ describe('build status', () => {
 
 describe('changing dials', () => {
   it('re-evaluates only undecided deviations', () => {
-    let s = reject(start(), 'dev-001', { now: clock });
+    let s = reject(start(), 'dev-002', { now: clock });
     s = setDial(s, 'no-hardcoded-color', 'auto-fix', clock);
     const color = s.log.filter((e) => e.rule === 'no-hardcoded-color');
     expect(color.map((e) => [e.id, e.decision])).toEqual([
-      ['dev-001', 'rejected'],
-      ['dev-002', 'auto-absorbed'],
+      ['dev-002', 'rejected'],
+      ['dev-001', 'auto-absorbed'],
     ]);
   });
 
@@ -168,7 +170,8 @@ describe('policy and contract stay separate', () => {
     expect(after.dials).toBe(before.dials);
     after.log
       .filter((e) => e.decision === 'amended')
-      .forEach((e) => expect(e.proposedChange).toMatch(/ to Button\./));
+      .flatMap((e) => e.proposedChange)
+      .forEach((change) => expect(change).toMatch(/ to Button\./));
   });
 });
 
@@ -177,7 +180,98 @@ describe('auto-absorbed visibility', () => {
     let s = start();
     expect(autoAbsorbed(s).map((e) => e.id)).toEqual(['dev-003', 'dev-004']);
     s = setDial(s, 'no-hardcoded-color', 'auto-fix', clock);
-    expect(autoAbsorbed(s).map((e) => e.id)).toEqual(['dev-003', 'dev-004', 'dev-001', 'dev-002']);
+    expect(autoAbsorbed(s).map((e) => e.id)).toEqual(['dev-003', 'dev-004', 'dev-001']);
+  });
+});
+
+describe('auto-fix never absorbs an unexplained deviation', () => {
+  it('keeps a no-reason deviation in review under auto-fix, on load', () => {
+    const policy = { dials: { ...seed().policy.dials, 'no-hardcoded-color': 'auto-fix' } };
+    const s = createSession({ ...seed(), policy, now: clock });
+    expect(autoAbsorbed(s).map((e) => e.id)).not.toContain('dev-002');
+    expect(autoAbsorbed(s).map((e) => e.id)).toContain('dev-001');
+    expect(reviewQueue(s).map((d) => d.id)).toContain('dev-002');
+    expect(heldForReview(s, s.deviations.find((d) => d.id === 'dev-002'))).toBe(true);
+  });
+
+  it('keeps it in review when a dial is turned to auto-fix mid-session', () => {
+    const s = setDial(start(), 'no-hardcoded-color', 'auto-fix', clock);
+    expect(isDecided(s, 'dev-002')).toBe(false);
+    expect(reviewQueue(s).map((d) => d.id)).toEqual(['dev-005', 'dev-002']);
+  });
+
+  it('lets a person decide it under any dial, logging the auto-fix dial', () => {
+    let s = setDial(start(), 'no-hardcoded-color', 'auto-fix', clock);
+    s = reject(s, 'dev-002', { now: clock });
+    expect(s.log.at(-1)).toMatchObject({ id: 'dev-002', decision: 'rejected', dialSetting: 'auto-fix' });
+    expect(() => amend(setDial(start(), 'no-hardcoded-color', 'auto-fix'), 'dev-002')).toThrow(/requires a note/);
+  });
+
+  it('still refuses a manual decision on an explained auto-fix deviation', () => {
+    // Clear the log so dev-003 is undecided while its dial is still auto-fix.
+    expect(() => reject({ ...start(), log: [] }, 'dev-003')).toThrow(/under auto-fix/);
+  });
+});
+
+describe('dial changes in the session are reversible', () => {
+  it('returns deviations absorbed by a mid-session auto-fix when the dial goes back to ask', () => {
+    let s = setDial(start(), 'no-hardcoded-color', 'auto-fix', clock);
+    expect(isDecided(s, 'dev-001')).toBe(true);
+    s = setDial(s, 'no-hardcoded-color', 'ask', clock);
+    expect(isDecided(s, 'dev-001')).toBe(false);
+    expect(autoAbsorbed(s).map((e) => e.id)).toEqual(['dev-003', 'dev-004']);
+    expect(reviewQueue(s).map((d) => d.id)).toEqual(['dev-005', 'dev-001', 'dev-002']);
+  });
+
+  it('returns them to block too, and they block the build', () => {
+    let s = setDial(start(), 'no-hardcoded-color', 'auto-fix', clock);
+    s = setDial(s, 'no-hardcoded-color', 'block', clock);
+    expect(reviewQueue(s).map((d) => d.id)).toContain('dev-001');
+    expect(buildStatus(s).blockedCount).toBe(3); // dev-005, dev-001, dev-002
+  });
+
+  it('leaves policy-absorbed deviations absorbed', () => {
+    const s = setDial(start(), 'no-arbitrary-spacing', 'ask', clock);
+    expect(autoAbsorbed(s).map((e) => e.id)).toEqual(['dev-003', 'dev-004']);
+    expect(reviewQueue(s).some((d) => d.rule === 'no-arbitrary-spacing')).toBe(false);
+  });
+
+  it('moves only deviations with no Reject/Amend decision', () => {
+    let s = reject(start(), 'dev-002', { now: clock });
+    s = setDial(s, 'no-hardcoded-color', 'auto-fix', clock); // absorbs dev-001
+    s = setDial(s, 'no-hardcoded-color', 'ask', clock);
+    expect(s.log.find((e) => e.id === 'dev-002').decision).toBe('rejected');
+    expect(reviewQueue(s).map((d) => d.id)).toEqual(['dev-005', 'dev-001']);
+  });
+
+  it('absorbs again when the dial returns to auto-fix', () => {
+    let s = setDial(start(), 'no-hardcoded-color', 'auto-fix', clock);
+    s = setDial(s, 'no-hardcoded-color', 'ask', clock);
+    s = setDial(s, 'no-hardcoded-color', 'auto-fix', clock);
+    s = setDial(s, 'no-hardcoded-color', 'block', clock);
+    expect(isDecided(s, 'dev-001')).toBe(false);
+  });
+});
+
+describe('amends that need more than one contract change', () => {
+  it('lists the variant and every extra token for dev-005', () => {
+    const s = amend(start(), 'dev-005', { now: clock });
+    expect(s.log.at(-1).proposedChange).toEqual([
+      'add "destructive" to Button.variants',
+      'add color.danger to Button.allowedTokens.color',
+    ]);
+  });
+
+  it('skips extra tokens the component already allows', () => {
+    const contract = seed().contract;
+    const d = { rule: 'no-off-contract-variant', snippet: '<Button variant="x">', alsoAllowTokens: ['color.primary', 'color.danger'] };
+    expect(proposeChanges(d, contract)).toEqual(['add "x" to Button.variants', 'add color.danger to Button.allowedTokens.color']);
+  });
+
+  it('refuses a report whose extra tokens the contract lacks', () => {
+    const report = seed().report;
+    report.deviations[4].alsoAllowTokens = ['color.nope'];
+    expect(() => createSession({ ...seed(), report })).toThrow(/no such token/);
   });
 });
 
@@ -192,7 +286,10 @@ describe('definition of done', () => {
     expect(out.contract).toBe('Acme UI@1.0.0');
     expect(new Set(out.entries.map((e) => e.dialSetting))).toEqual(new Set(['auto-fix', 'ask', 'block']));
     expect(new Set(out.entries.map((e) => e.decision))).toEqual(new Set(['auto-absorbed', 'rejected', 'amended']));
-    expect(out.entries.find((e) => e.id === 'dev-005').proposedChange).toBe('add "destructive" to Button.variants');
+    expect(out.entries.find((e) => e.id === 'dev-005').proposedChange).toEqual([
+      'add "destructive" to Button.variants',
+      'add color.danger to Button.allowedTokens.color',
+    ]);
     expect(JSON.parse(JSON.stringify(out))).toEqual(out);
   });
 });

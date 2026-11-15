@@ -76,6 +76,44 @@ describe('lint report', () => {
     ]);
   });
 
+  describe('alsoAllowTokens', () => {
+    const d = (alsoAllowTokens) => ({
+      deviations: [{ id: 'dev-1', rule: 'r', file: 'f', line: 1, snippet: 's', suggestedToken: 't', alsoAllowTokens }],
+    });
+    const contract = JSON.parse(raw('contract'));
+
+    it('is optional, and accepts token paths that exist in the contract', () => {
+      const { alsoAllowTokens, ...plain } = d([]).deviations[0];
+      expect(checks.report({ deviations: [plain] }, { contract })).toEqual([]);
+      expect(checks.report(d([]), { contract })).toEqual([]);
+      expect(checks.report(d(['color.danger', 'spacing.6']), { contract })).toEqual([]);
+    });
+
+    it('rejects anything that is not a list of group.name paths', () => {
+      const msg = 'Deviation "dev-1" has an "alsoAllowTokens" that isn\'t a list of token paths. Use a list like ["color.danger"].';
+      expect(checks.report(d('color.danger'), { contract })).toEqual([msg]);
+      expect(checks.report(d(['danger']), { contract })).toEqual([msg]);
+      expect(checks.report(d([3]), { contract })).toEqual([msg]);
+    });
+
+    it('names tokens the contract does not have', () => {
+      expect(checks.report(d(['color.danger', 'color.nope', 'size.xl']), { contract })).toEqual([
+        'Deviation "dev-1" lists "color.nope" and "size.xl" in "alsoAllowTokens", but the contract has no such token.',
+      ]);
+    });
+
+    it('checks existence through checkFile when the contract is passed', () => {
+      expect(checkFile('report', JSON.stringify(d(['color.nope'])), { contract }).value).toBeUndefined();
+      expect(checkFile('report', JSON.stringify(d(['color.danger'])), { contract }).value).toBeDefined();
+    });
+
+    it('accepts the seed report, where dev-005 also needs color.danger', () => {
+      const report = JSON.parse(raw('lint-report'));
+      expect(report.deviations.find((x) => x.id === 'dev-005').alsoAllowTokens).toEqual(['color.danger']);
+      expect(checks.report(report, { contract })).toEqual([]);
+    });
+  });
+
   it('accepts an empty report', () => {
     expect(checks.report({ deviations: [] })).toEqual([]);
   });

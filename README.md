@@ -8,7 +8,7 @@ A review tool for design-system drift caused by AI coding agents.
 
 ## Why
 
-Detecting drift is a solved problem: linters already flag hard-coded colours, off-scale spacing and off-contract variants. Most tools then fix the code automatically. But an auto-fix hides a decision. Sometimes the agent was wrong, and sometimes the agent found a real gap in the design system.
+Detecting drift is a solved problem: linters already flag hard-coded colors, off-scale spacing and off-contract variants. Most tools then fix the code automatically. But an auto-fix hides a decision. Sometimes the agent was wrong, and sometimes the agent found a real gap in the design system.
 
 Drift Detector shows a person what broke and the reason the agent gave, then asks them to decide which side is wrong:
 
@@ -21,7 +21,7 @@ Every outcome is recorded, including the ones the agent absorbed without asking.
 
 | Step | What it is |
 |---|---|
-| **Set** | The Autonomy Dial. Each lint rule is set to **Auto-fix** (absorbed silently, logged), **Ask** (reviewed, nothing waits) or **Block** (reviewed, and the build stays blocked until it is). |
+| **Set** | The Autonomy Dial. Each lint rule is set to **Auto-fix** (absorbed silently, logged; never applied to a deviation the agent didn't explain), **Ask** (reviewed, nothing waits) or **Block** (reviewed, and the build stays blocked until it is). |
 | **Explain** | The agent's stated reason sits on every deviation. A missing reason is shown in the same place, in red. |
 | **Decide** | Reject or Amend. The two buttons are deliberately identical so the interface doesn't suggest an answer. Amending a change the agent didn't explain requires a note from you. |
 | **Record** | A decision log of every outcome, auto-absorbed ones included, exportable as JSON. |
@@ -32,10 +32,10 @@ Planned for v2: **Declare** (the agent states intent before generating) and **Ca
 
 The page opens with a seeded scenario: one rule on each dial setting.
 
-1. The build is blocked by an off-contract `variant="destructive"` on a Delete account button. Read the agent's reason, then decide whether the contract should gain a destructive variant.
-2. Two hard-coded colours are waiting. One has a reason; the other doesn't, so Amend requires a note.
+1. The build is blocked by an off-contract `variant="destructive"` on a Delete account button. Read the agent's reason, then decide whether the contract should gain a destructive variant (Amend lists both changes it needs: the variant and `color.danger`).
+2. Two hard-coded colors are waiting. One has a reason; the other doesn't, so Amend requires a note.
 3. Two spacing fixes were absorbed by Auto-fix. The line under the dial links to them in the log.
-4. Change any dial. Only undecided deviations are re-evaluated.
+4. Change any dial. Only undecided deviations are re-evaluated. Turn the colors to Auto-fix and the unexplained one still waits for you; turn them back to Ask and the one Auto-fix absorbed returns.
 5. Export the log.
 
 ## Use your own files
@@ -67,15 +67,20 @@ Under **Your data** at the bottom of the page, drop or choose a JSON file for an
 {
   "deviations": [
     { "id": "dev-001", "rule": "no-hardcoded-color", "file": "src/components/Button.tsx", "line": 18,
-      "snippet": "background-color: #3B82F6;", "suggestedToken": "color.primary" }
+      "snippet": "background-color: #3B82F6;", "suggestedToken": "color.primary" },
+    { "id": "dev-005", "rule": "no-off-contract-variant", "file": "src/pages/Settings.tsx", "line": 42,
+      "snippet": "<Button variant=\"destructive\">Delete account</Button>", "suggestedToken": "variant=\"secondary\"",
+      "alsoAllowTokens": ["color.danger"] }
   ]
 }
 ```
 
+`alsoAllowTokens` is optional: tokens an Amend must also allow, because one contract change isn't always enough (a destructive variant also needs `color.danger`). Each must exist in the contract. Amend then lists every change.
+
 **`reasons.json`**: the agent's reason for each deviation, keyed by id. A missing id means "No reason given".
 
 ```json
-{ "dev-001": "Matched the hero CTA colour in the marketing mock." }
+{ "dev-001": "Matched the hero CTA color in the marketing mock." }
 ```
 
 Contract and policy are separate files on purpose. The contract describes the design system, and the policy describes how much the agent may decide alone. Amend only ever proposes contract changes, so it can't loosen the agent's own oversight.

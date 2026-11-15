@@ -2,6 +2,7 @@
 // list of problems; an empty list means the file can be loaded.
 
 import { DIALS } from './session.js';
+import { resolveToken } from './proposals.js';
 
 export const MAX_FILE_BYTES = 1_000_000;
 const MAX_PROBLEMS = 8;
@@ -45,7 +46,8 @@ export const checks = {
       .map(([rule, dial]) => `Rule "${rule}" is set to ${JSON.stringify(dial)}. Use "auto-fix", "ask" or "block".`);
   },
 
-  report(r) {
+  // `contract`, when given, is the one in use; alsoAllowTokens must exist in it.
+  report(r, { contract } = {}) {
     if (!isObject(r)) return ['The lint report should be a JSON object, starting with {.'];
     if (!Array.isArray(r.deviations)) return ['The lint report needs a "deviations" list.'];
     const problems = [];
@@ -59,6 +61,7 @@ export const checks = {
       const missing = DEVIATION_TEXT_FIELDS.filter((k) => !isText(d[k]));
       if (missing.length) problems.push(`${name} is missing ${quoteList(missing)}.`);
       if (!Number.isInteger(d.line) || d.line < 1) problems.push(`${name} needs a "line" that is a whole number, 1 or more.`);
+      if ('alsoAllowTokens' in d) problems.push(...alsoAllowProblems(name, d.alsoAllowTokens, contract));
       if (isText(d.id)) {
         if (seen.has(d.id)) problems.push(`The id "${d.id}" is used more than once. Each deviation needs its own id.`);
         seen.add(d.id);
@@ -77,6 +80,18 @@ export const checks = {
   },
 };
 
+// Optional extra tokens an Amend must also allow, e.g. ["color.danger"].
+function alsoAllowProblems(name, tokens, contract) {
+  if (!Array.isArray(tokens) || !tokens.every((t) => isText(t) && /^[^.\s]+\.[^.\s]+$/.test(t))) {
+    return [`${name} has an "alsoAllowTokens" that isn't a list of token paths. Use a list like ["color.danger"].`];
+  }
+  if (!contract) return [];
+  const missing = tokens.filter((t) => resolveToken(contract, t) === null);
+  return missing.length
+    ? [`${name} lists ${quoteList(missing)} in "alsoAllowTokens", but the contract has no such token.`]
+    : [];
+}
+
 export function parseJson(text) {
   try {
     return { value: JSON.parse(text), problems: [] };
@@ -86,10 +101,11 @@ export function parseJson(text) {
 }
 
 // Parse and check one file. `value` is set only when there are no problems.
-export function checkFile(kind, text) {
+// `context` carries the other files in use, e.g. { contract }, for checks across files.
+export function checkFile(kind, text, context = {}) {
   const parsed = parseJson(text);
   if (parsed.problems.length) return parsed;
-  const problems = cap(checks[kind](parsed.value));
+  const problems = cap(checks[kind](parsed.value, context));
   return { value: problems.length ? undefined : parsed.value, problems };
 }
 

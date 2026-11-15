@@ -39,7 +39,8 @@
       "file": "src/pages/Settings.tsx",
       "line": 42,
       "snippet": "<Button variant=\"destructive\">Delete account</Button>",
-      "suggestedToken": "variant=\"secondary\""
+      "suggestedToken": "variant=\"secondary\"",
+      "alsoAllowTokens": ["color.danger"]
     }
   ]
 }

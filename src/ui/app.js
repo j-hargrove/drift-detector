@@ -28,6 +28,7 @@ let confirmation = null; // the last Reject/Amend, shown where its card was: { e
 let lastDecisionAt = 0;
 // The next card can render under the pointer; a double-click must not decide it too.
 const DOUBLE_CLICK_GUARD_MS = 500;
+let resolvedDone = null; // the last follow-up marked done, shown where it was: { entry, index }
 let resolving = null; // the one open "Mark fixed/applied" note form: { id, scope, note }; scope is 'log' or 'follow'
 let lastStatus = '';
 
@@ -49,7 +50,7 @@ function render(fallback) {
   $('#dials').innerHTML = view.dials(session);
   $('#queue').innerHTML = view.queue(session, pending, notes, errors, confirmation);
   $('#queue-count').textContent = pending.length;
-  $('#follow-ups').innerHTML = view.followUps(session.log, resolving);
+  $('#follow-ups').innerHTML = view.followUps(session.log, resolving, resolvedDone);
   $('#follow-count').textContent = open;
   $('#absorbed').innerHTML = view.absorbedSummary(session);
   $('#log').innerHTML = view.log(session.log, resolving, session);
@@ -113,6 +114,7 @@ function startReview(next) {
   errors.clear();
   resolving = null;
   confirmation = null;
+  resolvedDone = null;
 }
 
 async function onFile(kind, file) {
@@ -125,7 +127,7 @@ async function onFile(kind, file) {
 
   const tooBig = sizeProblem(file.size);
   if (tooBig) return fail([tooBig]);
-  const { value, problems } = checkFile(kind, await file.text());
+  const { value, problems } = checkFile(kind, await file.text(), { contract: data.contract });
   if (problems.length) return fail(problems);
   try {
     startReview({ ...data, [kind]: value });
@@ -197,22 +199,24 @@ function onResolve(form) {
   session = resolve(session, id, { note: resolving.note });
   resolving = null;
   if (scope === 'log') {
+    resolvedDone = null;
     render();
     focusKey(`reopen:${id}`)()?.focus();
   } else {
-    // Done follow-ups leave the list; focus the next one, or the heading if none are left.
-    render();
-    const rest = document.querySelectorAll('[data-resolve][data-scope="follow"]');
-    (rest[Math.min(index, rest.length - 1)] ?? $('#follow-title')).focus();
+    // The done item leaves Follow-ups. As with Reject/Amend, a confirmation takes its place and gets focus,
+    // so the list doesn't silently shift under the pointer.
+    resolvedDone = { entry, index };
+    render(() => $('[data-focus="resolved-link"]'));
+    $('[data-focus="resolved-link"]')?.focus();
   }
-  const done = entry.decision === 'rejected' ? 'Code fix marked done' : 'Contract change marked applied';
-  announce(`${done}: ${view.shortRef(entry)}.`);
+  announce(`${view.resolvedText(entry)} Moved to the decision log.`);
 }
 
 function onReopen(id) {
   const entry = session.log.find((e) => e.id === id);
   session = reopen(session, id);
   if (resolving?.id === id) resolving = null;
+  if (resolvedDone?.entry.id === id) resolvedDone = null;
   render();
   focusKey(`resolve:${id}:log`)()?.focus();
   announce(`Reopened: ${view.shortRef(entry)}. ${entry.decision === 'rejected' ? 'Code fix' : 'Contract change'} pending again.`);
@@ -292,11 +296,14 @@ function bind() {
     const before = session.log.length;
     session = setDial(session, input.dataset.rule, input.value);
     render();
-    const absorbed = session.log.length - before;
+    const change = session.log.length - before;
+    const n = Math.abs(change);
+    const plural = `deviation${n === 1 ? '' : 's'}`;
     const label = input.closest('.dial').querySelector('h3')?.textContent ?? input.dataset.rule;
     announce(
       `${label} set to ${input.nextElementSibling.textContent}.` +
-        (absorbed ? ` Auto-fix absorbed ${absorbed} deviation${absorbed === 1 ? '' : 's'}. ${remainingText()}` : ''),
+        (change > 0 ? ` Auto-fix absorbed ${n} ${plural}. ${remainingText()}` : '') +
+        (change < 0 ? ` ${n} ${plural} returned to Needs your decision. ${remainingText()}` : ''),
     );
   });
 
