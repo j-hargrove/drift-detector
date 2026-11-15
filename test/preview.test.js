@@ -15,6 +15,10 @@ describe('variant preview', () => {
     expect(p.panels.every((x) => x.button.text === 'Delete account')).toBe(true);
   });
 
+  it('keeps the Agent built caption short (the snippet already shows the variant)', () => {
+    expect(p.panels[0].caption).toBe('No contract style yet');
+  });
+
   it('uses color.danger only once Amend allows it', () => {
     const [built, rejected, amended] = p.panels.map((x) => x.button);
     expect(amended.bg).toBe('#DC2626');

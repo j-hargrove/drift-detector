@@ -40,7 +40,7 @@ function variantPreview(d, contract) {
   return {
     kind: 'variant',
     panels: [
-      { label: 'Agent built', caption: `variant="${built}", no contract style yet`, button: button(contract, label, VARIANT_TOKENS[built] ?? VARIANT_TOKENS[fallback]) },
+      { label: 'Agent built', caption: 'No contract style yet', button: button(contract, label, VARIANT_TOKENS[built] ?? VARIANT_TOKENS[fallback]) },
       { label: 'If you Reject', caption: `variant="${fix}"`, button: button(contract, label, VARIANT_TOKENS[fix] ?? VARIANT_TOKENS[fallback]) },
       { label: 'If you Amend', caption: `variant="${built}"${amendColor ? ` with ${amendColor}` : ''}`, button: button(contract, label, amendTokens) },
     ],
