@@ -14,6 +14,7 @@
   <header class="masthead">
     <h1>Drift Detector</h1>
     <p class="lede">An AI agent changed your Button. Other tools fix that quietly. Here you see what broke and why the agent did it, then you decide: <strong>Reject</strong> means the code is wrong. <strong>Amend</strong> means the contract is wrong.</p>
+    <dl class="stats" id="stats" aria-label="Review totals"></dl>
     <p class="meta source" id="source"></p>
   </header>
 
@@ -44,7 +45,7 @@
     <section aria-labelledby="log-title">
       <div class="section-head">
         <h2 id="log-title" tabindex="-1">Decision log <span class="hint">Includes what the agent absorbed without asking</span></h2>
-        <button id="export" class="link-button" type="button">Export JSON</button>
+        <button id="export" class="primary-button" type="button">Export JSON</button>
       </div>
       <p class="absorbed" id="absorbed"></p>
       <div id="log"></div>

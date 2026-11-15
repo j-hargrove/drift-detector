@@ -1,7 +1,8 @@
 // HTML string templates. No DOM access here; app.js decides where they go.
 
-import { DIALS, amendNeedsNote, autoAbsorbed, heldForReview, isDecided } from '../core/session.js';
+import { DIALS, amendNeedsNote, autoAbsorbed, buildStatus, heldForReview, isDecided, reviewQueue } from '../core/session.js';
 import { proposeChanges, resolveToken } from '../core/proposals.js';
+import { preview } from '../core/preview.js';
 import { flagRule, flagTitle } from '../core/explain.js';
 
 const DIAL_LABEL = { 'auto-fix': 'Auto-fix', ask: 'Ask', block: 'Block' };
@@ -45,6 +46,19 @@ export function status({ blocked, blockedCount }, firstBlockedId) {
     : `<div class="status"><strong>Build clear</strong><span class="status__detail">No blocked deviations</span></div>`;
 }
 
+// Found / To decide / Absorbed / Blocked. "To decide" is the strip's one accent tile;
+// Blocked turns red while anything blocks the build.
+export function stats(session) {
+  const blocked = buildStatus(session).blockedCount;
+  const tiles = [
+    ['Found', session.deviations.length, ''],
+    ['To decide', reviewQueue(session).length, ' stat--hero'],
+    ['Absorbed', autoAbsorbed(session).length, ''],
+    ['Blocked', blocked, blocked ? ' stat--blocked' : ''],
+  ];
+  return tiles.map(([label, n, mod]) => `<div class="stat${mod}"><dt>${label}</dt><dd>${n}</dd></div>`).join('');
+}
+
 export function dials(session) {
   if (!session.rules.length) return `<p class="empty">No rules to set. The lint report has no deviations.</p>`;
   return session.rules
@@ -65,7 +79,7 @@ export function dials(session) {
             <h3>${esc(ruleLabel(rule))}</h3>
             <p class="meta">${RULE_LABEL[rule] ? `<code>${esc(rule)}</code> · ` : ''}${all.length} found · ${open} undecided</p>
           </div>
-          <fieldset class="dial__options">
+          <fieldset class="dial__options" data-dial="${esc(rule)}" style="--pos: ${DIALS.indexOf(current)}">
             <legend class="sr-only">Dial for ${esc(ruleLabel(rule))}</legend>
             ${options}
           </fieldset>
@@ -155,6 +169,7 @@ function card(session, d, note, error) {
           ${reason}
         </div>
       </dl>
+      ${drawing(preview(d, session.contract))}
       <div class="decision">
         <button type="button" class="decide" data-action="reject" data-id="${esc(d.id)}" data-focus="decide:${esc(d.id)}:reject" aria-describedby="${base}-title">
           <span class="decide__head"><span class="decide__verb">Reject</span> <span class="decide__gloss">The code is wrong</span></span>
@@ -181,6 +196,45 @@ function card(session, d, note, error) {
 }
 
 const fileRef = ({ file, line }) => `${String(file).split('/').pop()}:${line}`;
+
+// The deviation drawn from contract tokens: what the agent built and what each decision ships.
+// Token values are hex/px only (preview.js filters them), so they're safe in a style attribute.
+function drawing(p) {
+  if (!p) return '';
+  const panel = (x, art) => `
+    <div class="preview__panel">
+      <div class="preview__stage">${art}</div>
+      <p class="preview__label">${esc(x.label)}</p>
+      <p class="preview__caption">${esc(x.caption)}</p>
+    </div>`;
+  let panels;
+  if (p.kind === 'variant') panels = p.panels.map((x) => panel(x, drawnButton(x.button)));
+  if (p.kind === 'color') {
+    panels = p.panels.map((x) =>
+      panel(x, `<span class="swatch" style="background: ${esc(x.swatch.hex)}"></span><code class="swatch__hex">${esc(x.swatch.hex)}</code>`),
+    );
+  }
+  if (p.kind === 'spacing') panels = p.panels.map((x) => panel(x, spacingArt(p, x)));
+  const note = p.kind === 'spacing' ? `<figcaption class="preview__note">${p.property === 'gap' ? 'Gap' : 'Padding'} drawn at ${p.scale}×</figcaption>` : '';
+  return `<figure class="preview preview--${p.kind}"><div class="preview__panels">${panels.join('')}</div>${note}</figure>`;
+}
+
+function drawnButton(b, extra = '') {
+  return `<span class="drawn" style="background: ${esc(b.bg)}; color: ${esc(b.fg)}; border-color: ${esc(b.border)}; border-radius: ${esc(b.radius)}; padding: ${esc(b.padding)} ${esc(b.paddingInline)};${extra}">${esc(b.text)}</span>`;
+}
+
+// Padding: the button's padding at scale, the content box dashed, a measured bracket under the left padding.
+// Gap: two buttons, the bracket under the gap between them.
+function spacingArt(p, x) {
+  const size = `${x.px * p.scale}px`;
+  const dim = `<span class="dim" style="width: ${size}"><span class="dim__label">${x.px}px</span></span>`;
+  if (p.property === 'gap') {
+    const small = drawnButton(x.button, ' padding: 4px 8px;');
+    return `<span class="measure measure--gap" style="gap: ${size}">${small}${small}<span class="dim dim--gap" style="width: ${size}"><span class="dim__label">${x.px}px</span></span></span>`;
+  }
+  const b = x.button;
+  return `<span class="measure"><span class="drawn drawn--measured" style="background: ${esc(b.bg)}; color: ${esc(b.fg)}; border-radius: ${esc(b.radius)}; padding: ${size};"><span class="drawn__content">${esc(b.text)}</span></span>${dim}</span>`;
+}
 
 // Reject and Amend decisions whose code fix or contract change hasn't happened yet.
 // `done` is the last follow-up marked done ({ entry, index }); its confirmation takes the item's place.

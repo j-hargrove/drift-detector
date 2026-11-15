@@ -428,3 +428,42 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - **New `fixes` e2e script**, 28 checks at each of 1280px and 390px, all passing. It covers: no "colour" in the page; dev-005 Amend lists both changes; code tokens `nowrap`; no line break inside a token and no token spilling out of its box (measured per character); buttons side by side; no sideways scroll; held card and its line; absorb, return and announcements; policy-absorbed spacing staying put; changes listed in Follow-ups and the log; the resolve confirmation text, position, focus, link and live-region text; chip colour; no console errors.
 - **Problem in my own check:** the classifier blocked starting a local HTTP server, so the script serves the repo files through Playwright request interception instead.
 - **Live recheck** (https://drift-detector-psi.vercel.app, deployed about 20s after the push): `fixes` 56/56. Earlier scripts: polish 56, decide-visible 24, badge 14, ia 25, theme 2, all passing. Five of their assertions encoded the old spec and were updated: "colour" in the meta line, the new `--success` token, the new under-button block in the card order, `.follow-ups li` now also matching nested change items, and separate change lines read as one wrapped line.
+
+## Polish pass 2: native-app finish (2026-11-14)
+
+**Scope:** seven items, with a polished native app as the reference: one strong accent, a stat strip with big numerals, rendered previews in every card, white cards with soft depth, a four-size type scale, a pill dial, and motion on decide and resolve. Same structure and data, light theme, AA contrast. Several items reverse rules in `CLAUDE.md` (no shadows, no pills, no cards outside the review queue, slate-outlined Reject/Amend, five type sizes). They were asked for explicitly, so `CLAUDE.md` is updated to match.
+
+**Done**
+1. **One accent, as a fill.** Slate fills one hero element per section, with white text: the To decide tile, the selected dial segment and Export JSON (now a pill button). Everything else went neutral: step-tab underline, Reject/Amend outlines and hover, the note field and dial track all use ink or muted olive.
+2. **Stat strip** under the intro: Found / To decide / Absorbed / Blocked as 36px bold tabular numerals over 13px muted labels. It re-renders with everything else, so it updates live. The Blocked tile turns red above 0. 2×2 under 640px.
+3. **Rendered previews** above Reject/Amend in every card, from contract tokens in pure HTML/CSS. `src/core/preview.js` builds the data (unit-tested), and `render.js` draws it.
+   - Variant: three drawn "Delete account" buttons. Agent built falls back to primary, because the contract has no destructive style yet. Reject draws secondary. Amend draws destructive in `color.danger`, which `alsoAllowTokens` lets it use.
+   - Color: two swatches with hex, the agent's vs the token's.
+   - Spacing: the button's padding at 2×, with the content box dashed and a measured bracket (10px vs 12px). For the `gap` flag, two buttons and a bracket under the gap.
+4. **Cards:** white on the warm page, 16px radius, a two-layer soft shadow, no border. Snippets have a 10px radius.
+5. **Type:** four sizes (36 / 24 / 16 / 13). The page title and numerals are 36. Section headings and the Reject/Amend verbs are 24 (verbs were 20; they stay the largest interactive text). Section gaps doubled from 48px to 96px (64px on mobile).
+6. **Dial:** a pill segmented control. One `::before` thumb in the accent slides 150ms between equal segments, and turns red on Block.
+7. **Motion:** 180ms ease. A decided card collapses into its confirmation line; a resolved follow-up does the same. `prefers-reduced-motion` turns off all transitions and animations, in CSS and JS.
+
+**Decisions**
+- **The accent is slate, not a blue.** The request said "the deepest blue in the existing Clarity palette". The palette's only blue is ice `#DFE5F3`, and white text on it is 1.26:1, so it can't be a fill. Slate `#557373` is the deepest cool colour in the palette, was already the accent, and holds 5.14:1 with white.
+- **Decide has no accent element.** "Primary action" can't be Reject or Amend: they are deliberately identical so the interface doesn't suggest an answer. The accent fills nothing in that section.
+- **"Agent built" draws the fallback, not the agent's intent.** The snippet says `variant="destructive"`, but nothing in the contract says what that looks like, so today it renders as the default variant. That makes the Amend drawing a real change, which is the point of "uses color.danger once Amend allows it".
+- **Spacing is drawn at 2×,** with a caption saying so. 10px vs 12px is hard to see at 1×. The bracket labels keep the true px values.
+- **Motion needed FLIP.** Every render replaces the DOM, so CSS transitions alone would never run. app.js starts the new element where the old one was: the dial thumb at its old `--pos`, the confirmation at the card's old height. Then it lets the change settle.
+- **Contract values in style attributes are filtered** to hex colours and px lengths, because users can load their own contract. Anything else falls back to a safe default (tested).
+- **`--surface` is now white,** so cards read as lifted off the paper page. `--text-muted` gains contrast on it (5.18:1).
+
+**How it was verified**
+- 84/84 tests pass (8 new, for `preview.js`: the three variant drawings and when `color.danger` appears, token padding and radius, swatches, padding and gap measurements, filtering of unsafe values, unknown rules).
+- **New `polish2` e2e script**, 39 checks at each of 1280px and 390px, all passing:
+  - stat values, size, weight and tabular figures, live update after a decision, Blocked red then white at 0
+  - the only accent fills are the hero tile and Export; dial thumbs are accent, and red for Block; Reject/Amend are neutral and identical
+  - pill shape; the thumb measured at start, mid-slide and end (it travels)
+  - card colour, radius, border and two shadow layers; snippet radius; no left-border stripes
+  - a preview above Reject/Amend in every card; drawn colours, padding at 2× (20px and 24px) and gap (12px and 16px); labels line up; nothing overflows
+  - only 13/16/24/36px across all rendered text; 8px grid; sentence-case labels
+  - AA contrast for every visible text element against its effective background (including the dial thumb)
+  - decide and resolve start a 180ms animation from the card's height; reduced motion leaves no animations or transitions
+- **Problems in my own check:** the contrast walk missed the dial's `::before` fill and read the selected white text as 1:1; the sentence-case check flagged code identifiers and second sentences. Both fixed in the script; the page was right.
+- **Problem found in review:** in the spacing card, the stages differed in height, so the labels didn't line up. Fixed with CSS subgrid rows.

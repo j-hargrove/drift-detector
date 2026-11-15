@@ -10,6 +10,7 @@ import {
   reviewQueue,
   setDial,
 } from '../core/session.js';
+import { DIALS } from '../core/session.js';
 import { checkFile, sizeProblem } from '../core/validate.js';
 import * as view from './render.js';
 
@@ -47,6 +48,7 @@ function render(fallback) {
   const status = view.status(buildStatus(session), pending[0]?.id);
   if (status !== lastStatus) $('#status').innerHTML = lastStatus = status; // live region: only on change
   $('#steps').innerHTML = view.steps(pending.length, open);
+  $('#stats').innerHTML = view.stats(session);
   $('#dials').innerHTML = view.dials(session);
   $('#queue').innerHTML = view.queue(session, pending, notes, errors, confirmation);
   $('#queue-count').textContent = pending.length;
@@ -95,6 +97,34 @@ function markCurrentStep() {
 function renderData() {
   $('#source').innerHTML = view.source(sources);
   $('#loader').innerHTML = view.loader(sources, loadErrors);
+}
+
+const reducedMotion = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const MOTION_MS = 180;
+
+// Rendering replaces the DOM, so transitions can't run on their own. Each of these starts the new
+// element where the old one was and lets it settle (FLIP), unless reduced motion is on.
+
+// A decided card or resolved follow-up collapses into its confirmation line.
+function collapseInto(el, fromHeight) {
+  if (!el || reducedMotion() || !fromHeight) return;
+  const to = el.offsetHeight;
+  el.animate(
+    [{ height: `${fromHeight}px`, opacity: 0.4, overflow: 'hidden' }, { height: `${to}px`, opacity: 1, overflow: 'hidden' }],
+    { duration: MOTION_MS, easing: 'ease' },
+  );
+}
+
+// The dial's selected fill slides from the old segment to the new one (150ms, in CSS).
+function slideDial(rule, fromIndex) {
+  const control = document.querySelector(`fieldset[data-dial="${CSS.escape(rule)}"]`);
+  if (!control || reducedMotion() || fromIndex < 0) return;
+  const to = control.style.getPropertyValue('--pos');
+  control.classList.add('is-instant');
+  control.style.setProperty('--pos', fromIndex);
+  void control.offsetWidth; // commit the start position
+  control.classList.remove('is-instant');
+  control.style.setProperty('--pos', to);
 }
 
 const announce = (message) => {
@@ -158,6 +188,7 @@ function onDecide(button) {
   const note = notes.get(id) ?? '';
   const index = reviewQueue(session).findIndex((d) => d.id === id);
   const deviation = session.deviations.find((d) => d.id === id);
+  const cardHeight = document.getElementById(`review-${id}`)?.offsetHeight;
   try {
     session = (action === 'reject' ? reject : amend)(session, id, { note });
   } catch (err) {
@@ -174,6 +205,7 @@ function onDecide(button) {
   // The card is gone and the next one would render in exactly its place, so nothing would seem to happen.
   // The confirmation takes the card's place instead, and focus goes to its link: visible, and one Tab from the next card.
   render(() => $('[data-focus="decided-link"]'));
+  collapseInto($('.decided[data-decided]'), cardHeight);
   announce(`${action === 'reject' ? 'Rejected' : 'Amended'}: ${view.shortRef(deviation)}. Moved to Follow-ups. ${remainingText()}`);
 }
 
@@ -196,6 +228,7 @@ function onResolve(form) {
   const { id, scope } = resolving;
   const entry = session.log.find((e) => e.id === id);
   const index = [...document.querySelectorAll('[data-resolve][data-scope="follow"], [data-resolve-form][data-scope="follow"]')].indexOf(form);
+  const itemHeight = form.closest('li')?.offsetHeight;
   session = resolve(session, id, { note: resolving.note });
   resolving = null;
   if (scope === 'log') {
@@ -208,6 +241,7 @@ function onResolve(form) {
     resolvedDone = { entry, index };
     render(() => $('[data-focus="resolved-link"]'));
     $('[data-focus="resolved-link"]')?.focus();
+    collapseInto($('.follow-ups__done'), itemHeight);
   }
   announce(`${view.resolvedText(entry)} Moved to the decision log.`);
 }
@@ -294,8 +328,10 @@ function bind() {
     const input = e.target.closest('input[data-rule]');
     if (!input) return;
     const before = session.log.length;
+    const from = DIALS.indexOf(session.dials[input.dataset.rule]);
     session = setDial(session, input.dataset.rule, input.value);
     render();
+    slideDial(input.dataset.rule, from);
     const change = session.log.length - before;
     const n = Math.abs(change);
     const plural = `deviation${n === 1 ? '' : 's'}`;

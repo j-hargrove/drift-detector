@@ -1,35 +1,45 @@
 :root {
   /* Color: the Clarity palette. Paper #F2EFEA, ice #DFE5F3, slate #557373,
-     olive-dark #272401, ink #0D0D0D, plus one muted red and one muted green. Ratios in BUILD_LOG.md. */
-  --bg: #f2efea;          /* paper */
-  --surface: #f9f7f5;     /* paper, half-way to white: inputs, buttons, chips */
+     olive-dark #272401, ink #0D0D0D, plus one muted red and one muted green.
+     Slate is the one accent, used as a solid fill (white text, 5.14:1) for one hero element per section.
+     Ratios in BUILD_LOG.md. */
+  --bg: #f2efea;          /* paper: the warm grey page */
+  --surface: #ffffff;     /* white: cards, stat tiles, the dial track, inputs on the page */
   --text: #0d0d0d;        /* ink */
-  --text-muted: #706e57;  /* olive-dark tinted toward white: the lightest that holds 4.5:1 on --bg (4.51) and --surface (4.84). Only 4.10 on --tint, so never used there */
+  --text-muted: #706e57;  /* olive-dark tinted toward white: 4.51:1 on --bg, 5.18:1 on white. Only 4.10 on --tint, so never used there */
   --rule: #c9c6bb;        /* paper with 20% olive-dark; decorative only */
-  --accent: #557373;      /* slate: borders, underlines, focus ring, active dial, button fill. 3:1+ for UI, not for small text */
-  --accent-text: #4a6666; /* slate, darkened: links and small accent text. 5.41:1 on --bg */
-  --tint: #dfe5f3;        /* ice: selected dial segment, auto-fix summary line, pending chip */
-  --success: #44704c;     /* muted green: the resolved chip only. 5.36:1 on --surface, 4.99:1 on --bg */
-  --danger: #9b3b2b;      /* muted red: Build blocked, Block, missing reasons, errors */
+  --accent: #557373;      /* slate: the one accent fill (white text 5.14:1) and the focus ring */
+  --accent-text: #4a6666; /* slate, darkened: links. 5.41:1 on --bg, 6.21:1 on white */
+  --tint: #dfe5f3;        /* ice: code snippets, confirmation band, auto-fix summary line, pending chip */
+  --success: #44704c;     /* muted green: the resolved chip only. 5.73:1 on white, 4.99:1 on --bg */
+  --danger: #9b3b2b;      /* muted red: Build blocked, Blocked tile, Block dial, missing reasons, errors. White on it 6.88:1 */
 
-  /* Type: one family plus monospace, five sizes. */
+  /* Depth: one soft two-layer shadow, for cards and tiles. Ink at low alpha. */
+  --hairline: rgb(13 13 13 / 0.12); /* edge for drawn swatches, which may be white */
+  --shadow: 0 1px 2px rgb(13 13 13 / 0.06), 0 8px 24px rgb(13 13 13 / 0.07);
+
+  /* Type: one family plus monospace, four sizes. */
   --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --fs-1: 13px;
-  --fs-2: 16px;
-  --fs-3: 20px;
-  --fs-section: 24px; /* section headings (h2) */
-  --fs-4: 32px;
+  --fs-label: 13px;   /* labels, metadata, code */
+  --fs-body: 16px;    /* body, card titles */
+  --fs-heading: 24px; /* section headings, Reject/Amend verbs */
+  --fs-display: 36px; /* page title, stat numerals */
 
-  /* Space: 8px scale. */
+  /* Space: 8px grid. */
   --s-1: 8px;
   --s-2: 16px;
   --s-3: 24px;
   --s-4: 32px;
   --s-6: 48px;
   --s-8: 64px;
+  --s-12: 96px;
 
-  --radius: 4px;
+  --radius: 4px;        /* chips, bands */
+  --radius-code: 10px;  /* code snippets, preview stages */
+  --radius-card: 16px;  /* cards, stat tiles */
+  --radius-pill: 999px; /* the dial, the primary action */
+  --motion: 150ms ease;
   --column: 760px;                        /* reading column */
   --bar-clearance: calc(var(--s-8) + var(--s-2)); /* sticky bar height plus a gap, for in-page jumps and focus */
   color-scheme: light;
@@ -43,23 +53,23 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: var(--fs-2)/1.5 var(--font);
+  font: var(--fs-body)/1.5 var(--font);
 }
 
 h1, h2, h3, p, pre { margin: 0; }
-code, pre { font-family: var(--mono); font-size: var(--fs-1); }
+code, pre { font-family: var(--mono); font-size: var(--fs-label); }
 
 .masthead, main, .bar__inner {
   max-width: var(--column);
   margin: 0 auto;
   padding: 0 var(--s-2);
 }
-main { padding-bottom: var(--s-8); }
+main { padding-bottom: var(--s-12); }
 
-.meta { font-size: var(--fs-1); color: var(--text-muted); }
+.meta { font-size: var(--fs-label); color: var(--text-muted); }
 .empty { color: var(--text-muted); }
 .warn { color: var(--danger); font-weight: 600; }
-.error { color: var(--danger); font-size: var(--fs-1); font-weight: 600; }
+.error { color: var(--danger); font-size: var(--fs-label); font-weight: 600; }
 a { color: var(--accent-text); text-decoration-color: var(--accent); text-underline-offset: 3px; }
 a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 2px; }
 main:focus, .entry:focus, h2:focus { outline: none; }
@@ -72,17 +82,34 @@ h2[tabindex="-1"]:focus-visible { outline: 2px solid var(--accent); outline-offs
   background: var(--text);
   color: var(--bg);
   border-radius: var(--radius);
-  z-index: 1;
+  z-index: 3;
 }
 .skip-link:focus { top: var(--s-2); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 
 /* Masthead */
 .masthead { padding-top: var(--s-6); padding-bottom: var(--s-3); }
-h1 { font-size: var(--fs-4); line-height: 1.2; font-weight: 650; letter-spacing: -0.01em; }
+h1 { font-size: var(--fs-display); line-height: 1.15; font-weight: 700; letter-spacing: -0.02em; }
 .lede { margin-top: var(--s-1); color: var(--text-muted); }
 .lede strong { color: var(--text); font-weight: 600; }
 .source { margin-top: var(--s-2); }
+
+/* Stat strip: big tabular numerals over small labels. "To decide" is the strip's accent tile. */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); margin: var(--s-3) 0 0; }
+.stat {
+  display: flex;
+  flex-direction: column-reverse; /* dt comes first in the markup; the numeral reads first on screen */
+  justify-content: flex-end;
+  padding: var(--s-2);
+  background: var(--surface);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
+}
+.stat dt { font-size: var(--fs-label); color: var(--text-muted); }
+.stat dd { margin: 0; font-size: var(--fs-display); font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+.stat--hero { background: var(--accent); color: var(--surface); }
+.stat--blocked { background: var(--danger); color: var(--surface); }
+.stat--hero dt, .stat--blocked dt { color: var(--surface); }
 
 /* Sticky bar: steps as tabs, plus the build status */
 .bar { position: sticky; top: 0; z-index: 2; background: var(--bg); border-bottom: 1px solid var(--rule); }
@@ -97,8 +124,8 @@ h1 { font-size: var(--fs-4); line-height: 1.2; font-weight: 650; letter-spacing:
   text-decoration: none;
 }
 .steps a:hover { color: var(--text); }
-/* The section you're reading; set from scroll position in app.js. */
-.steps a[aria-current] { color: var(--text); border-bottom-color: var(--accent); }
+/* The section you're reading; set from scroll position in app.js. Neutral: the accent is for fills. */
+.steps a[aria-current] { color: var(--text); border-bottom-color: var(--text); }
 .steps a:focus-visible { outline-offset: -2px; }
 
 .status {
@@ -107,70 +134,101 @@ h1 { font-size: var(--fs-4); line-height: 1.2; font-weight: 650; letter-spacing:
   gap: var(--s-1);
   text-decoration: none;
   padding: var(--s-1) var(--s-2);
-  border-radius: var(--radius);
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
-  font-size: var(--fs-1);
+  font-size: var(--fs-label);
 }
 .status:not(.status--blocked) { padding-inline: 0; }
-.status strong { font-size: var(--fs-1); font-weight: 600; color: var(--text); }
+.status strong { font-size: var(--fs-label); font-weight: 600; color: var(--text); }
 /* A filled control: no underline. Inline rather than flex, so the spaces either side of "·" are ordinary
    word spaces and "Build blocked · 1" reads as one label. */
-.status--blocked { display: inline-block; background: var(--danger); color: var(--bg); font-weight: 600; }
-.status--blocked strong { color: var(--bg); }
+.status--blocked { display: inline-block; background: var(--danger); color: var(--surface); font-weight: 600; }
+.status--blocked strong { color: var(--surface); }
 a.status--blocked:hover { background: var(--text); }
-a.status--blocked:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: var(--radius); }
+a.status--blocked:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: var(--radius-pill); }
 
-/* Sections: whitespace and a thin rule, nothing else */
-/* More space between sections than inside them, so each heading groups with its own content. */
-section { margin-top: var(--s-6); padding-top: var(--s-3); border-top: 1px solid var(--rule); }
+/* Sections: whitespace and a thin rule. 96px between sections, so each heading groups with its own content. */
+section { margin-top: var(--s-12); padding-top: var(--s-3); border-top: 1px solid var(--rule); }
 /* The sticky bar's border already separates the first section; a second rule would double it. */
-main > section:first-child { padding-top: 0; border-top: 0; }
-h2 { font-size: var(--fs-section); line-height: 1.2; font-weight: 600; letter-spacing: -0.01em; margin-bottom: var(--s-2); }
-.hint { display: block; font-size: var(--fs-1); font-weight: 400; line-height: 1.6; letter-spacing: 0; color: var(--text-muted); }
+main > section:first-child { margin-top: var(--s-6); padding-top: 0; border-top: 0; }
+h2 { font-size: var(--fs-heading); line-height: 1.2; font-weight: 700; letter-spacing: -0.01em; margin-bottom: var(--s-3); }
+.hint { display: block; margin-top: var(--s-1); font-size: var(--fs-label); font-weight: 400; line-height: 1.5; letter-spacing: 0; color: var(--text-muted); }
 .section-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-2); }
+
+/* The one accent action in a section (Export JSON). */
+.primary-button {
+  flex: none;
+  padding: var(--s-1) var(--s-3);
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  color: var(--surface);
+  font: 600 var(--fs-body) var(--font);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--motion);
+}
+.primary-button:hover { background: var(--text); }
+.primary-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 
 /* Autonomy dial */
 .dial {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
   column-gap: var(--s-4);
-  padding: var(--s-2) 0;
+  padding: var(--s-3) 0;
 }
 .dial:first-child { padding-top: 0; }
 .dial + .dial { border-top: 1px solid var(--rule); }
 .dial__rule { grid-row: span 2; }
-h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
-/* One bordered segmented control per rule. Its left edge lines up with the help text below. */
+h3 { font-size: var(--fs-body); font-weight: 600; margin: 0; }
+/* A pill-shaped segmented control. The selected fill is one ::before thumb, positioned by --pos
+   (0, 1, 2) and slid there in 150ms; app.js starts it from the old segment after each render.
+   Selected = accent fill, white text. Block's fill is red. */
 .dial__options {
-  display: inline-flex;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   justify-self: start;
+  width: 100%;
   margin: 0;
   padding: 0;
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  overflow: hidden;
+  border: 1px solid var(--text-muted);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
 }
-.dial__option { position: relative; }
-.dial__option + .dial__option { border-left: 1px solid var(--accent); }
+.dial__options::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: calc(100% / 3);
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  transform: translateX(calc(var(--pos, 0) * 100%));
+  transition: transform var(--motion), background-color var(--motion);
+}
+.dial__options:has(input[value="block"]:checked)::before { background: var(--danger); }
+.dial__options.is-instant::before { transition: none; }
+.dial__option { position: relative; z-index: 1; }
 .dial__option input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
 .dial__option span {
   display: block;
   padding: var(--s-1) var(--s-2);
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-pill);
   color: var(--text-muted);
+  text-align: center;
+  transition: color var(--motion);
 }
 .dial__option input:hover + span { color: var(--text); }
-/* Selected = ice fill + bold. Only a selected Block adds an underline, in red. */
-.dial__option input:checked + span { color: var(--text); font-weight: 600; background: var(--tint); }
-.dial__option input[value="block"]:checked + span { border-bottom-color: var(--danger); }
-.dial__option input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: -4px; }
+.dial__option input:checked + span { color: var(--surface); font-weight: 600; }
+.dial__option input:focus-visible + span { outline: 2px solid var(--text); outline-offset: -4px; }
 .dial__help { grid-column: 2; padding-top: var(--s-1); }
 
-/* Confirmation left where a decided card was. Same ice band as the auto-fix line. */
-.decided { padding: var(--s-2); background: var(--tint); border-radius: var(--radius); }
-.absorbed { margin-bottom: var(--s-3); padding: var(--s-1) var(--s-2); background: var(--tint); border-radius: var(--radius); }
+/* Confirmation left where a decided card or done follow-up was. Same ice band as the auto-fix line. */
+.decided { padding: var(--s-2); background: var(--tint); border-radius: var(--radius-code); }
+.absorbed { margin-bottom: var(--s-3); padding: var(--s-1) var(--s-2); background: var(--tint); border-radius: var(--radius-code); }
 
-/* Review: each card is a contained panel; cards and the confirmation are spaced by the queue's gap. */
+/* Review: each card is white on the warm page, with soft depth and no border. */
 .queue { display: grid; gap: var(--s-3); }
 .review {
   display: grid;
@@ -178,31 +236,78 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   gap: var(--s-2);
   padding: var(--s-3);
   background: var(--surface);
-  border: 1px solid var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow);
 }
 /* Reached from the Build blocked link; the outline shows where focus landed. */
 .review:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-.review__title { font-size: var(--fs-2); font-weight: 600; line-height: 1.4; }
+.review__title { font-size: var(--fs-body); font-weight: 600; line-height: 1.4; }
 .review__meta { margin-top: calc(-1 * var(--s-1)); overflow-wrap: anywhere; }
 .review__meta code { color: inherit; }
 /* Auto-fix with no agent reason: says why this card is here at all. */
-.review__held { margin-top: calc(-1 * var(--s-1)); font-size: var(--fs-1); font-weight: 600; }
+.review__held { margin-top: calc(-1 * var(--s-1)); font-size: var(--fs-label); font-weight: 600; }
 .loc { color: var(--text-muted); }
-/* Ice block sets code apart from the surface panel. One line of code scrolls rather than wraps;
+/* Ice block sets code apart from the white card. One line of code scrolls rather than wraps;
    when it overflows, app.js shows the "scroll sideways" cue below it and makes it keyboard-scrollable. */
-.snippet { padding: var(--s-1) var(--s-2); background: var(--tint); border-radius: var(--radius); overflow-x: auto; white-space: pre; }
+.snippet { padding: var(--s-1) var(--s-2); background: var(--tint); border-radius: var(--radius-code); overflow-x: auto; white-space: pre; }
 .snippet:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .snippet__more { margin-top: calc(-1 * var(--s-1)); }
 
 .why { display: grid; gap: var(--s-2); max-width: 65ch; margin: 0; }
 .why dd { margin: 0; }
-.reason__text { font-size: var(--fs-2); line-height: 1.55; }
+.reason__text { font-size: var(--fs-body); line-height: 1.55; }
 .reason__text--missing { color: var(--danger); font-weight: 600; }
 
+/* Preview: the deviation drawn from contract tokens. Drawn colors come from the contract,
+   not this palette; they're the subject, not the interface. */
+.preview { display: grid; gap: var(--s-1); margin: 0; }
+.preview__panels { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); grid-template-rows: auto auto auto; column-gap: var(--s-2); }
+/* Subgrid rows, so stages share one height and labels line up across panels. */
+.preview__panel { display: grid; grid-row: span 3; grid-template-rows: subgrid; row-gap: 0; min-width: 0; }
+.preview__stage {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s-1);
+  min-height: 96px;
+  margin-bottom: var(--s-1);
+  padding: var(--s-2);
+  background: var(--bg);
+  border-radius: var(--radius-code);
+}
+.preview__label { font-size: var(--fs-label); font-weight: 600; }
+.preview__caption { font-size: var(--fs-label); color: var(--text-muted); overflow-wrap: anywhere; }
+.preview__note { font-size: var(--fs-label); color: var(--text-muted); }
+.drawn {
+  display: inline-block;
+  max-width: 100%;
+  border: 1px solid transparent;
+  font: 600 var(--fs-body)/1.25 var(--font);
+  text-align: center;
+}
+.swatch { display: block; width: 100%; height: 48px; border-radius: var(--radius-code); box-shadow: inset 0 0 0 1px var(--hairline); }
+.swatch__hex { font-weight: 600; }
+/* Measured spacing: the content box dashed, a bracket with ticks under the measured space. */
+.measure { position: relative; display: inline-flex; flex-direction: column; align-items: flex-start; gap: var(--s-1); }
+.drawn--measured { border: 0; }
+.drawn__content { display: block; outline: 1px dashed currentColor; }
+.dim {
+  position: relative;
+  height: var(--s-1);
+  border: 1px solid var(--text);
+  border-top: 0;
+}
+.dim__label { position: absolute; top: var(--s-1); left: 0; font: 600 var(--fs-label) var(--mono); white-space: nowrap; }
+.measure--gap { flex-direction: row; align-items: center; padding-bottom: var(--s-4); }
+.measure--gap .drawn { font-size: var(--fs-label); }
+.dim--gap { position: absolute; bottom: var(--s-2); left: 50%; transform: translateX(-50%); }
+.dim--gap .dim__label { left: 50%; transform: translateX(-50%); }
+
 .decision { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-2); margin-top: var(--s-1); }
-/* Two lines inside each button: the verb with its meaning, then what it will do. */
+/* Two lines inside each button: the verb with its meaning, then what it will do. Identical and neutral,
+   so the interface doesn't suggest an answer; the accent isn't used here. */
 .decide {
   display: grid;
   justify-items: center;
@@ -211,41 +316,40 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   width: 100%;
   min-width: 0;
   padding: var(--s-2);
-  border: 2px solid var(--accent);
-  border-radius: var(--radius);
+  border: 1px solid var(--text-muted);
+  border-radius: var(--radius-card);
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
   text-align: center;
   cursor: pointer;
+  transition: background-color var(--motion), color var(--motion);
 }
 .decide__head { display: flex; flex-wrap: wrap; justify-content: center; align-items: baseline; column-gap: var(--s-1); }
-.decide__verb { font-size: var(--fs-3); font-weight: 650; line-height: 1.3; }
-.decide__gloss { font-size: var(--fs-1); }
+.decide__verb { font-size: var(--fs-heading); font-weight: 700; line-height: 1.25; }
+.decide__gloss { font-size: var(--fs-label); }
 /* One line per change. Code tokens never wrap, so a line breaks only at a space, before a token. */
-.decide__effect { display: grid; gap: 0; max-width: 100%; font-size: var(--fs-1); }
+.decide__effect { display: grid; gap: 0; max-width: 100%; font-size: var(--fs-label); }
 .decide__effect code { color: inherit; }
 .change { display: block; }
 .change code, .changes code { white-space: nowrap; }
 /* The narrow-screen copy of the consequences; see the media query. */
 .decision__effects { display: none; }
-/* Surface text, not paper: paper on slate is 4.48:1, under AA for the 13px lines. */
-.decide:hover:not([aria-disabled="true"]) { background: var(--accent); color: var(--surface); }
+.decide:hover:not([aria-disabled="true"]) { background: var(--text); color: var(--surface); }
 .decide:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-/* Still focusable, so it can be reached and explained.
-   Accent text, so disabled reads as slate rather than generic grey: 5.41:1 on --bg. */
-.decide[aria-disabled="true"] { border-style: dashed; color: var(--accent-text); cursor: not-allowed; }
+/* Still focusable, so it can be reached and explained. Dashed edge and muted text: 4.51:1 on --bg. */
+.decide[aria-disabled="true"] { border-style: dashed; color: var(--text-muted); cursor: not-allowed; }
 
-.note { display: grid; gap: var(--s-1); font-size: var(--fs-1); color: var(--text-muted); }
+.note { display: grid; gap: var(--s-1); font-size: var(--fs-label); color: var(--text-muted); }
 .note__req { color: var(--danger); }
 .note textarea {
   width: 100%;
-  padding: var(--s-1);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
+  padding: var(--s-1) var(--s-2);
+  border: 1px solid var(--text-muted);
+  border-radius: var(--radius-code);
   background: var(--bg);
   color: var(--text);
-  font: var(--fs-2)/1.5 var(--font);
+  font: var(--fs-body)/1.5 var(--font);
   resize: vertical;
 }
 .note textarea::placeholder { color: var(--text-muted); }
@@ -267,20 +371,20 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   border-radius: var(--radius);
   background: var(--tint);
   color: var(--text); /* --text-muted is 4.10:1 on ice */
-  font-size: var(--fs-1);
+  font-size: var(--fs-label);
   line-height: 1.7;
 }
 .chip--resolved { border-color: var(--success); background: var(--surface); color: var(--success); font-weight: 600; }
-.resolve-form { display: grid; gap: var(--s-1); width: 100%; font-size: var(--fs-1); color: var(--text-muted); }
+.resolve-form { display: grid; gap: var(--s-1); width: 100%; font-size: var(--fs-label); color: var(--text-muted); }
 .resolve-form input {
   width: 100%;
   max-width: 40ch;
   padding: 0 var(--s-1);
-  border: 1px solid var(--accent);
+  border: 1px solid var(--text-muted);
   border-radius: var(--radius);
   background: var(--surface);
   color: var(--text);
-  font: var(--fs-2)/1.5 var(--font);
+  font: var(--fs-body)/1.5 var(--font);
 }
 .resolve-form input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .resolve-form__actions { display: flex; gap: var(--s-2); }
@@ -302,16 +406,16 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   display: block;
   padding: var(--s-1) var(--s-2);
   border: 1px dashed var(--rule);
-  border-radius: var(--radius);
+  border-radius: var(--radius-code);
   color: var(--text-muted);
-  font-size: var(--fs-1);
+  font-size: var(--fs-label);
   text-align: center;
   cursor: pointer;
 }
 .drop__pick { color: var(--accent-text); text-decoration: underline; text-decoration-color: var(--accent); text-underline-offset: 3px; }
-.drop:hover, .drop.is-over { border-style: solid; border-color: var(--accent); color: var(--text); }
+.drop:hover, .drop.is-over { border-style: solid; border-color: var(--text-muted); color: var(--text); }
 .drop:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
-.slot__errors { grid-column: 1 / -1; color: var(--danger); font-size: var(--fs-1); }
+.slot__errors { grid-column: 1 / -1; color: var(--danger); font-size: var(--fs-label); }
 .slot__errors ul { margin: var(--s-1) 0 0; padding-left: var(--s-2); }
 
 /* Decision log */
@@ -321,13 +425,13 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   background: none;
   color: var(--accent-text);
   text-decoration-color: var(--accent);
-  font: 600 var(--fs-2) var(--font);
+  font: 600 var(--fs-body) var(--font);
   text-decoration: underline;
   text-underline-offset: 3px;
   white-space: nowrap;
   cursor: pointer;
 }
-.link-button--small { font-size: var(--fs-1); }
+.link-button--small { font-size: var(--fs-label); }
 .link-button--quiet { color: var(--text-muted); font-weight: 400; }
 .link-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
 
@@ -338,7 +442,7 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
   grid-template-columns: 200px minmax(0, 1fr);
   column-gap: var(--s-3);
   row-gap: var(--s-1);
-  padding: var(--s-2) 0;
+  padding: var(--s-3) 0;
 }
 .entry:first-child { padding-top: 0; }
 .entry + .entry { border-top: 1px solid var(--rule); }
@@ -348,31 +452,45 @@ h3 { font-size: var(--fs-2); font-weight: 600; margin: 0; }
 .entry__head .loc { overflow-wrap: break-word; } /* paths carry <wbr> after each "/" */
 .entry__head strong { font-weight: 600; }
 .entry__reason { max-width: 60ch; }
-.entry__outcome { display: grid; gap: var(--s-1); align-content: start; font-size: var(--fs-1); overflow-wrap: anywhere; }
+.entry__outcome { display: grid; gap: var(--s-1); align-content: start; font-size: var(--fs-label); overflow-wrap: anywhere; }
 .entry__outcome .changes { overflow-wrap: normal; }
 
 @media (max-width: 640px) {
   .masthead { padding-top: var(--s-4); }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--s-1); }
   /* Bar: tabs fill the row; the status keeps its headline (and the count while blocked). */
-  .steps a { padding: var(--s-1); font-size: var(--fs-1); }
+  .steps a { padding: var(--s-1); font-size: var(--fs-label); }
   .steps { margin-left: calc(-1 * var(--s-1)); }
   .status { padding: var(--s-1); }
   /* "No blocked deviations" is visually hidden on narrow screens, still read out with the status. */
   .status__detail { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  section { margin-top: var(--s-8); }
   .review { padding: var(--s-2); }
   .decide { padding: var(--s-1); }
   /* A half-width button is narrower than the longest token here, and tokens never break. The consequences
      move under the buttons at full width; the in-button copy stays in the accessible name. */
   .decide__effect { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .decision__effects { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-1); font-size: var(--fs-1); }
+  .decision__effects { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--s-1); font-size: var(--fs-label); }
   /* Labels in one column, every change line in the other. */
   .decision__effect { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; row-gap: 0; }
   .decision__effect .change { grid-column: 2; }
   .decision__label { font-weight: 600; }
   .decision__effect code { color: inherit; }
+  /* Previews: one row per outcome, the drawing beside its label. */
+  .preview__panels { grid-auto-flow: row; grid-template-columns: minmax(0, 1fr); gap: var(--s-1); }
+  .preview__panels { grid-template-rows: none; }
+  .preview__panel { grid-row: auto; grid-template-columns: 9.5rem minmax(0, 1fr); grid-template-rows: auto auto; column-gap: var(--s-2); align-items: center; }
+  .preview__stage { grid-row: span 2; min-height: 72px; margin-bottom: 0; padding: var(--s-1); }
+  .preview__label { align-self: end; }
+  .preview__caption { align-self: start; }
   .dial { grid-template-columns: minmax(0, 1fr); }
   .dial__rule { grid-row: auto; margin-bottom: var(--s-1); }
   .dial__help { grid-column: 1; }
   .entry { grid-template-columns: minmax(0, 1fr); }
   .slot { grid-template-columns: minmax(0, 1fr); }
+  .section-head { flex-wrap: wrap; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
 }

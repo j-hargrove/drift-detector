@@ -65,14 +65,19 @@ Top to bottom:
 2. **Meta line** (small): mode · rule name · file:line. No rule id.
 3. **Snippet** on an ice block. It scrolls sideways rather than wrapping; when it overflows, a "The line continues. Scroll sideways to read it all." line appears under it and the snippet becomes keyboard-focusable.
 4. Two labelled lines: **Why it was flagged** (the contract rule in plain language, `flagRule`) and **Why the agent did it** (the agent's reason, or "No reason given" in `--danger`).
-5. **Reject | Amend**. Each button has two lines: the verb with its meaning ("Reject · The code is wrong"), then the consequence ("Code becomes color.primary #2563EB"), one line per contract change. Code tokens are `nowrap`: a line breaks only at a space, before a token, never inside one. Under 640px a half-width button is narrower than the longest token, so the consequences show full-width under the buttons instead (`aria-hidden`; the in-button copy stays in each button's accessible name). Then the note.
+5. **Preview**: the deviation drawn from contract tokens in pure HTML/CSS (`src/core/preview.js` builds the data, `render.js` draws it). Small labels under each drawing: "Agent built", "If you Reject", "If you Amend".
+   - Variant flags: three drawn buttons with the snippet's label. Agent built falls back to the default variant (no contract style yet); Reject draws the suggested variant; Amend draws the new variant with its `alsoAllowTokens` color (destructive in `color.danger`).
+   - Color flags: two swatches with hex, agent vs token. The agent's is kept if you Amend.
+   - Spacing flags: a drawn button with its padding (or two buttons with their gap) at 2×, the content box dashed and a measured bracket, agent px vs token px.
+   - Drawn colors come from the contract, so they are the only colors outside the palette. Only hex and px values reach a style attribute.
+6. **Reject | Amend**. Each button has two lines: the verb with its meaning ("Reject · The code is wrong"), then the consequence ("Code becomes color.primary #2563EB"), one line per contract change. Code tokens are `nowrap`: a line breaks only at a space, before a token, never inside one. Under 640px a half-width button is narrower than the longest token, so the consequences show full-width under the buttons instead (`aria-hidden`; the in-button copy stays in each button's accessible name). Then the note.
 
-Each card is a contained panel: `--surface`, a 1px `--rule` border, 24px padding (16px under 640px), 24px between cards. After a decision, the confirmation band takes the card's place with the same 24px gap.
+Each card is white (`--surface`) on the warm page, 16px radius, the soft two-layer `--shadow`, no border, 24px padding (16px under 640px), 24px between cards. Under 640px the preview stacks one outcome per row, drawing beside its label. After a decision, the confirmation band takes the card's place with the same 24px gap.
 
 ## Page order
-Masthead (title, intro, data source) → sticky bar (step tabs, build status) → Autonomy Dial → Needs your decision → Follow-ups (every pending Reject code fix and Amend contract change, with Mark fixed / Mark applied; done items leave) → Decision log (auto-fix summary line at the top, then entries, Export) → Your data.
+Masthead (title, intro, stat strip, data source) → sticky bar (step tabs, build status) → Autonomy Dial → Needs your decision → Follow-ups (every pending Reject code fix and Amend contract change, with Mark fixed / Mark applied; done items leave) → Decision log (auto-fix summary line at the top, then entries, Export) → Your data.
 
-Decision log entries lead with the same plain-language title as their card. Decision, dial and time come next, then file path and id as metadata. The Autonomy Dial is one bordered segmented control per rule, and the help text lines up with its left edge. Content sits in a 760px reading column.
+Decision log entries lead with the same plain-language title as their card. Decision, dial and time come next, then file path and id as metadata. The stat strip is four tiles (Found / To decide / Absorbed / Blocked): 36px bold tabular numerals over 13px muted labels, updated on every render. To decide is the strip's accent tile; Blocked turns red while it's above 0. 2×2 under 640px. The Autonomy Dial is one pill-shaped segmented control per rule, and the help text lines up with its left edge. Content sits in a 760px reading column.
 
 ## Decision log entry
 `id, rule, file, line, snippet, agentReason (or null), dialSetting, decision (auto-absorbed | rejected | amended), suggestedFix (rejected and auto-absorbed only), proposedChange (amend only; a list of every contract change), note, timestamp, resolution (rejected and amended only)`. Export as JSON.
@@ -85,25 +90,27 @@ Decision log entries lead with the same plain-language title as their card. Deci
 - **`suggestedFix` log field.** Reject is "logged with the suggested fix"; `proposedChange` stays amend-only.
 - **Auto-absorbed entries keep the agent's reason**, so the log shows what Auto-fix discarded.
 - **Light theme only.** Paper background `#F2EFEA`, ink text `#0D0D0D`. No dark mode, no `prefers-color-scheme`.
+- **One accent, as a fill.** Slate is the one accent, used as a solid fill with white text (5.14:1) for one hero element per section: the To decide stat tile, the selected dial segment, Export JSON. Everything else is neutral (ink, muted olive, paper, white). Red fills only signal blocking (Build blocked, the Blocked tile, the selected Block segment). No left-border stripes.
 - **Visual hierarchy**, heaviest first:
-  1. Build status: the only strong colour, and only while blocked. Clear is plain text.
-  2. Reject and Amend: the largest interactive elements.
-  3. Agent's reason: body text, set off by typography. "No reason given" takes the same position in `--danger`.
+  1. Stat strip and build status: big numerals; red only while blocked.
+  2. Reject and Amend: the largest interactive elements (24px verbs).
+  3. The preview and the agent's reason. "No reason given" takes the reason's position in `--danger`.
   4. Snippet and location: small monospace, quiet.
   5. Metadata (rule id, dial, timestamps): smallest, muted.
-  Section headings (h2) use `--fs-section` (24px), between card text and the 32px page title.
-- **Reject and Amend buttons are identical** (same outline, size, weight), side by side at every width, so the UI doesn't suggest an answer.
-- **Palette: Clarity.** Paper `#F2EFEA`, ice `#DFE5F3`, slate `#557373`, olive-dark `#272401`, ink `#0D0D0D`, plus one muted red and one muted green. Every colour in `styles.css` is a custom property; no hex values outside `:root`. Contrast ratios are listed in `BUILD_LOG.md` (Clarity re-theme).
-  - `--bg` `#F2EFEA` (paper): page, and Reject/Amend and the note field inside cards. `--surface` `#F9F7F5` (paper half-way to white): review card panels, resolved chip background.
-  - `--text` `#0D0D0D` (ink). `--text-muted` `#706E57`: olive-dark tinted toward white, the lightest value that holds 4.5:1 on both `--bg` (4.51) and `--surface` (4.84). It's only 4.10:1 on ice, so it's never used on `--tint`; text there is `--text`.
-  - `--accent` `#557373` (slate): borders, underlines, focus ring, active dial, Reject/Amend hover fill. It's 4.48:1 on paper, so it's never used for small text on `--bg`.
-  - `--accent-text` `#4A6666`: links and small accent text (5.41:1 on paper, 4.92:1 on ice).
-  - `--tint` `#DFE5F3` (ice): selected dial segment, code snippets, confirmation band, auto-fix summary line, pending chip. Text on ice is `--text` or `--accent-text`, never `--text-muted`.
-  - `--success` `#44704C` (muted green): resolved chip text and border only, on `--surface` (5.36:1; 4.99:1 on paper). The only green.
-  - `--danger` `#9B3B2B`: Build blocked, the selected Block dial, missing agent reasons, validation errors. The only red.
-  - `--rule` `#C9C6BB` (paper with 20% olive-dark): thin section rules, card borders, drop-zone outlines. Decorative only; never the only cue for a control.
-  - Text on an accent fill uses `--surface`, not paper: paper on slate is 4.48:1.
-- **System.** System UI face plus monospace; type scale 13 / 16 / 20 / 24 / 32 (`--fs-1`, `--fs-2`, `--fs-3`, `--fs-section`, `--fs-4`); spacing on an 8px scale (no 4px half-steps); 760px reading column. Sections are separated by whitespace (48px) and thin rules. The first section has no rule, because the sticky bar's border sits above it. Review cards are the one contained panel (see Review card anatomy). Nothing else uses cards. No coloured borders except the dial control and Reject/Amend (slate), and no shadows, gradients, pills, emoji or uppercase eyebrows. Ice bands with the 4px radius are allowed for the confirmation and the auto-fix summary line, as are resolution chips (a text label with the 4px radius, not a pill; pending is ice-filled, resolved is a green outline on surface).
+- **Reject and Amend buttons are identical** (same neutral outline, fill, size, weight; never the accent), side by side at every width, so the UI doesn't suggest an answer. Decide therefore has no accent element.
+- **Palette: Clarity.** Paper `#F2EFEA`, ice `#DFE5F3`, slate `#557373`, olive-dark `#272401`, ink `#0D0D0D`, plus one muted red and one muted green. Every color in `styles.css` is a custom property; no color values outside `:root`. Contrast ratios are listed in `BUILD_LOG.md` (Clarity re-theme).
+  - `--bg` `#F2EFEA` (paper): the warm page, preview stages, and Reject/Amend and the note field inside cards. `--surface` `#FFFFFF`: cards, stat tiles, the dial track, the resolved chip background.
+  - `--text` `#0D0D0D` (ink). `--text-muted` `#706E57`: 4.51:1 on `--bg`, 5.18:1 on white. It's only 4.10:1 on ice, so it's never used on `--tint`; text there is `--text`. Also the neutral outline for Reject/Amend, the dial track and inputs.
+  - `--accent` `#557373` (slate): the one accent fill (white text 5.14:1) and the focus ring. Never small text on `--bg` (4.48:1).
+  - `--accent-text` `#4A6666`: links (5.41:1 on paper, 6.21:1 on white, 4.92:1 on ice).
+  - `--tint` `#DFE5F3` (ice): code snippets, confirmation band, auto-fix summary line, pending chip. Text on ice is `--text` or `--accent-text`, never `--text-muted`.
+  - `--success` `#44704C` (muted green): resolved chip text and border only (5.73:1 on white). The only green.
+  - `--danger` `#9B3B2B`: Build blocked, the Blocked tile, the selected Block segment, missing agent reasons, validation errors. White on it 6.88:1. The only red.
+  - `--rule` `#C9C6BB`: thin section rules, drop-zone outlines. Decorative only; never the only cue for a control.
+  - `--shadow`: the one soft two-layer shadow (ink at 6–7% alpha), for cards and stat tiles. `--hairline`: the edge on drawn swatches.
+  - Text on an accent or red fill is `--surface` (white).
+- **System.** System UI face plus monospace. Four type sizes only: 36 (page title, stat numerals), 24 (section headings, Reject/Amend verbs), 16 (body, card titles), 13 (labels, metadata, code) as `--fs-display`, `--fs-heading`, `--fs-body`, `--fs-label`. Labels are muted and sentence case. Spacing on an 8px grid. 760px reading column. Sections are separated by 96px (64px under 640px) and thin rules; the first section has no rule, because the sticky bar's border sits above it. Radii: 16px cards and tiles, 10px code snippets, preview stages, bands and inputs, pill for the dial, Export and the Build blocked badge, 4px for chips. Shadows only on cards and stat tiles. No gradients, emoji, uppercase eyebrows or left-border stripes.
+- **Motion.** 150–200ms ease. The dial's selected fill slides between segments (150ms). A decided card collapses into its confirmation line, and a resolved follow-up into its confirmation (180ms). Because rendering replaces the DOM, app.js starts each from the old state (FLIP). `prefers-reduced-motion: reduce` turns all of it off, in CSS and JS.
 
 ## Phases
 1. Core logic and seed data. Done.
