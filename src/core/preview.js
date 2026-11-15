@@ -18,8 +18,8 @@ const VARIANT_TOKENS = {
 };
 const BASE = { padding: 'spacing.3', paddingInline: 'spacing.4', radius: 'radius.md' };
 
-// Spacing differences of a few px are hard to see at 1×.
-export const SPACING_SCALE = 2;
+// Previews are true size; the measured brackets carry the px values.
+export const SPACING_SCALE = 1;
 
 export function preview(deviation, contract) {
   if (deviation.rule === 'no-off-contract-variant') return variantPreview(deviation, contract);

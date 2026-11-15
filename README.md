@@ -22,7 +22,7 @@ Every outcome is recorded, including the ones the agent absorbed without asking.
 | Step | What it is |
 |---|---|
 | **Set** | The Autonomy Dial. Each lint rule is set to **Auto-fix** (absorbed silently, logged; never applied to a deviation the agent didn't explain), **Ask** (reviewed, nothing waits) or **Block** (reviewed, and the build stays blocked until it is). |
-| **Explain** | The agent's stated reason sits on every deviation. A missing reason is shown in the same place, in red. |
+| **Explain** | The agent's stated reason sits on every deviation. A missing reason is flagged in the same place: "No reason given", in bold with an alert icon. |
 | **Decide** | Reject or Amend. The two buttons are deliberately identical so the interface doesn't suggest an answer. Amending a change the agent didn't explain requires a note from you. |
 | **Record** | A decision log of every outcome, auto-absorbed ones included, exportable as JSON. |
 

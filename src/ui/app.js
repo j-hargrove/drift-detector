@@ -29,6 +29,7 @@ let confirmation = null; // the last Reject/Amend, shown where its card was: { e
 let lastDecisionAt = 0;
 // The next card can render under the pointer; a double-click must not decide it too.
 const DOUBLE_CLICK_GUARD_MS = 500;
+const expanded = new Set(); // undecided cards opened from their row; the first card is always open
 let resolvedDone = null; // the last follow-up marked done, shown where it was: { entry, index }
 let resolving = null; // the one open "Mark fixed/applied" note form: { id, scope, note }; scope is 'log' or 'follow'
 let lastStatus = '';
@@ -47,10 +48,13 @@ function render(fallback) {
   const open = followUps(session).length;
   const status = view.status(buildStatus(session), pending[0]?.id);
   if (status !== lastStatus) $('#status').innerHTML = lastStatus = status; // live region: only on change
-  $('#steps').innerHTML = view.steps(pending.length, open);
+  // Carry the current tab across the re-render, so its fill doesn't re-animate from nothing on every render.
+  const currentStep = $('#steps a[aria-current]')?.dataset.step;
+  $('#steps').innerHTML = view.steps({ rules: session.rules.length, decide: pending.length, followUps: open, logged: session.log.length }, currentStep);
   $('#stats').innerHTML = view.stats(session);
+  $('#hero').innerHTML = view.hero(session);
   $('#dials').innerHTML = view.dials(session);
-  $('#queue').innerHTML = view.queue(session, pending, notes, errors, confirmation);
+  $('#queue').innerHTML = view.queue(session, pending, notes, errors, confirmation, expanded);
   $('#queue-count').textContent = pending.length;
   $('#follow-ups').innerHTML = view.followUps(session.log, resolving, resolvedDone);
   $('#follow-count').textContent = open;
@@ -145,6 +149,7 @@ function startReview(next) {
   resolving = null;
   confirmation = null;
   resolvedDone = null;
+  expanded.clear();
 }
 
 async function onFile(kind, file) {
@@ -345,7 +350,21 @@ function bind() {
 
   $('#queue').addEventListener('click', (e) => {
     const button = e.target.closest('button[data-action]');
-    if (button) onDecide(button);
+    if (button) return onDecide(button);
+    // A row opens into its full card, which takes focus; the card's chevron folds it back into the row.
+    const open = e.target.closest('button[data-expand]');
+    if (open) {
+      expanded.add(open.dataset.expand);
+      render();
+      document.getElementById(`review-${open.dataset.expand}`)?.focus();
+      return;
+    }
+    const close = e.target.closest('button[data-collapse]');
+    if (close) {
+      expanded.delete(close.dataset.collapse);
+      render();
+      focusKey(`expand:${close.dataset.collapse}`)()?.focus();
+    }
   });
 
   // Update the draft and the Amend button in place; a full render would steal focus.

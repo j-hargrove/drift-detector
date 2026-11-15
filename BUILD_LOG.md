@@ -470,3 +470,47 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - **Problem found in review:** at 390px, Export JSON wrapped under the Decision log heading and sat flush against the ice band. The heading's bottom margin now lives on the heading row, so a wrapped action keeps the 24px gap (checked: at least 16px).
 - **Live recheck** (https://drift-detector-psi.vercel.app): polish2 77/77, fixes 56/56, polish 46, decide-visible 24, badge 14, ia 25, theme 2, all passing. In the older scripts, assertions for rules this pass replaced were updated or retired: bordered cards, the divided dial, 16px under headings, card order without the preview, the old surface colour, and contract colours in drawings. The theme script's contrast walk now reads the dial thumb's `::before` fill.
 - **Screenshots** from production, desktop (1280px, 2×) and 390px: `docs/polish-pass-2/` (top with the stat strip, Set, decision cards for variant, color, padding and gap, Record).
+
+## Visual redesign: indigo (2026-11-14)
+
+**Scope:** a full visual redesign on the same structure, logic, data and tests. It replaces the Clarity palette and the pass-2 styling: page `#F4F5F9` with a dot grid, white surfaces, indigo `#2D2FA3` fills, red only for Block. Sora, Inter and JetBrains Mono from Google Fonts. New pieces: a branded header, icon stat cards, a contract hero, an icon tab bar, a single-card dial, indigo-banded decision cards that collapse to rows, and white Reject/Amend cards with icon tiles. `CLAUDE.md` is rewritten so none of the old visual rules remain.
+
+**Done**
+- **Header:** 44px gradient logo tile with a drift glyph (a baseline with a line curving off it, ending in a dot). Wordmark "Drift" 700 + "Detector" 300 indigo, with the tagline. On the right, "Load your files" and the build badge (red with an octagon and glow while blocked; white and bordered when clear).
+- **Stat cards:** an icon tile, the number in Sora 26/600, and a label. To decide is solid indigo; Blocked turns red.
+- **Contract hero:** component, contract and version, counts of variants and allowed tokens, and a "Drift by rule" bar chart from the report. On the right, an inline SVG anatomy of the Button. Its callouts come from the contract: `radius.md`, `spacing.3`, `color.primary` with a real swatch. The red "variant?" pill shows only when a variant deviation exists.
+- **Tabs:** icon, label and count chip; the active tab is indigo. A 4-up icon grid on phones.
+- **Dial:** one card with a row per rule: icon tile (red on Block), name, meta line with counts and the dial's meaning, and a segmented control (indigo, or red for Block). The 150ms slide is kept.
+- **Decision cards:**
+  - Indigo header band with a glass rule icon, dial chip, rule name, Sora 20 title, and file:line top-right.
+  - The offending value is marked in the snippet. "Why flagged" and "Why the agent did it" are side-by-side tiles.
+  - Previews are separate dot-grid tiles at true size, with shadows in each button's own color.
+  - Reject/Amend show "→" and "+" consequence lines in mono.
+  - Cards after the first collapse to rows with swatches for color flags; click expands, the chevron folds back.
+- **Follow-ups, Record, Your data:** white cards with hairline rows, decision chips, and an indigo-tint confirmation band.
+
+**Decisions**
+- **Red text on the red tint is a darker red.** `#C93A2E` on `#FBE7E5` is 4.28:1, under AA for 13px code, so the marked value uses `--red-text` `#A8301F` (5.68:1). The base red stays the fill (white on it 5.09:1).
+- **Muted text never sits on the indigo tint** (4.30:1). Hero labels in the glow corner are white (6.44:1 on the brightest blend), not `#C9CCF6` (4.12:1).
+- **Missing reasons and errors are no longer red.** "Red for Block/blocked only" leaves them ink, bold, with an indigo alert icon. The missing-reason tile also gets a dashed indigo edge. Before, red was their signal.
+- **The resolved chip is indigo on the tint.** The new palette has no green, which replaces last pass's green chip.
+- **The build badge moved from the sticky bar to the header,** as specified. While blocked, the Blocked stat card is red too.
+- **Previews are true size,** so the spacing drawing is 1× (10px vs 12px), with the measured brackets carrying the values. The pass-2 2× scale is gone.
+- **The anatomy's "height 36" is the drawing's own annotation:** the contract has no height token. The other callouts come from the contract, so a user-loaded contract relabels them.
+- **The wordmark has a visually hidden space,** so screen readers say "Drift Detector", not one word.
+- **On phones, Reject/Amend drop their icon tiles.** At half width the tile squeezed "The contract is wrong" onto three lines.
+
+**Problems found**
+- **Tab flash on every render (fixed).** The contrast walk found the active tab's count chip at 1:1. The cause was real: every render rebuilt the tabs without `aria-current`, so the indigo fill re-animated from transparent for 150ms after every click. `render()` now carries the current tab into the new markup.
+- **Drawn buttons wrapped at 390px (fixed).** "Delete account" broke onto two lines in the narrow preview stage, which isn't true size. Drawn buttons are now `nowrap` in a wider stage.
+
+**How it was verified**
+- 89/89 tests pass. That includes the lint-contract tests from the previous change, which isn't committed yet; 84 are in this commit's tree.
+- **New `redesign` e2e script,** at 1280px and 390px:
+  - palette and dot grid; fonts loaded and used where specified; the type sizes
+  - header pieces; stat cards; hero content, texture and phone stacking; tabs
+  - dial rows, tiles and thumbs; card band, marked snippet, why tiles, preview tiles (true size, one line, coloured shadows)
+  - Reject/Amend identical, with hover lift and indigo border; the note field
+  - collapse, expand and fold-back with focus; red used only for Block/blocked
+  - AA contrast for every visible text element; no sideways scroll; decide animation; build clear styling; reduced motion
+- The `fixes` script was updated for collapsed rows, "+" lines and the indigo chip. It passes.

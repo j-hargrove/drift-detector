@@ -6,23 +6,45 @@
   <title>Drift Detector</title>
   <meta name="description" content="Review design-system drift introduced by AI agents. Decide whether the code or the contract is wrong.">
   <link rel="icon" href="data:,">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Sora:wght@300;600;700;800&display=swap">
   <link rel="stylesheet" href="styles.css">
   <script type="module" src="src/ui/app.js"></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to the review</a>
   <header class="masthead">
-    <h1>Drift Detector</h1>
+    <div class="masthead__top">
+      <div class="brand">
+        <span class="logo" aria-hidden="true">
+          <!-- Drift: a faint baseline with a line curving up off it, ending in a dot. -->
+          <svg viewBox="0 0 44 44" width="44" height="44" fill="none" stroke-linecap="round">
+            <path d="M9 30h26" stroke="currentColor" stroke-opacity=".35" stroke-width="2"/>
+            <path d="M9 30h8c5 0 7-3 9-7.5S30 15 34 14.5" stroke="currentColor" stroke-width="2.25"/>
+            <circle cx="34.5" cy="14.5" r="2.75" fill="currentColor"/>
+          </svg>
+        </span>
+        <div>
+          <h1 class="wordmark"><span class="wordmark__a">Drift</span><span class="sr-only"> </span><span class="wordmark__b">Detector</span></h1>
+          <p class="tagline label">Design-system drift review</p>
+        </div>
+      </div>
+      <div class="masthead__actions">
+        <a class="button-secondary" href="#data" id="load-files"><svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M12 15V4"/><path d="m7 9 5-5 5 5"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>Load your files</a>
+        <div id="status" role="status"></div>
+      </div>
+    </div>
     <p class="lede">An AI agent changed your Button. Other tools fix that quietly. Here you see what broke and why the agent did it, then you decide: <strong>Reject</strong> means the code is wrong. <strong>Amend</strong> means the contract is wrong.</p>
+    <p class="source" id="source"></p>
     <dl class="stats" id="stats" aria-label="Review totals"></dl>
-    <p class="meta source" id="source"></p>
+    <div class="hero" id="hero" role="region" aria-labelledby="hero-title"></div>
   </header>
 
-  <!-- Sticky: the steps as tabs and the build status stay in view while you scroll. -->
+  <!-- Sticky: the steps as tabs stay in view while you scroll. -->
   <div class="bar">
     <div class="bar__inner">
       <nav aria-label="Steps"><ol class="steps" id="steps"></ol></nav>
-      <div id="status" role="status"></div>
     </div>
   </div>
 
