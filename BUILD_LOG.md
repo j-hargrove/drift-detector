@@ -516,3 +516,24 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - The `fixes` script was updated for collapsed rows, "+" lines and the indigo chip. It passes.
 - **Live recheck** (https://drift-detector-psi.vercel.app): redesign 104/104, fixes 56/56, decide-visible 24/24, all passing. One decide-visible assertion read the old "Follow-ups (1)" tab text and now reads label plus count chip; the counts were right.
 - **Screenshots** from production, desktop (1280px, 2×) and 390px, in `docs/redesign/`: top, the Block decision card, Record. The first top shot caught the tab fill mid-slide after scrolling back up, so it was retaken after a 400ms settle. That was a capture-timing artifact, not a page bug.
+
+## Fixes from live review: sticky bar, highlight, Set chip, hero shadow
+
+**What changed**
+- **Sticky bar is a full-width bar, not a floating pill.** The tabs' white container is gone; tabs sit straight on the bar, on the left. Once the bar sticks it frosts (`rgba(244,245,249,.85)`, 12px blur) and gets a 1px `#EEF0F5` hairline.
+- **Build badge back in the bar,** on the right, the same component as the header's (red link while blocked, white bordered "Build clear" otherwise). The header badge stays. The bar copy is not a live region, so the status is announced once, and it has its own focus key so re-renders restore focus to the right one.
+- **Highlight wraps the whole quoted value** (`"destructive"`, not `destructive`), inline with `padding: 0 2px`, so it adds no visible gap around the value.
+- **Set has no count chip.** The number of rules never needs attention; the other three counts do.
+
+**Decisions**
+- **The bar is clear until it sticks.** That's also the hero-shadow fix (below): a background that's always on paints over the shadow.
+- **On phones the bar badge is icon and count only.** "Build blocked" plus four tabs don't fit 358px in one row; the label stays for screen readers.
+- **On phones the tab count chips moved to the icon's corner.** Stacked under the label they made the bar 94px tall, about an eighth of a 390px screen; on the corner each tab is two lines.
+
+**Problems found**
+- **The hard edge under the hero wasn't a clipping parent.** No ancestor of the hero has `overflow` other than visible (checked in the browser). The hero's shadow (`0 18px 40px`) reaches about 58px below it, and the sticky bar, 24px below the hero, had an 88%-opaque background that painted over it in a straight line. Making the bar clear until it's stuck lets the shadow fall onto the page.
+
+**How it was verified**
+- 89/89 unit tests (84 in this commit's tree; the rest are the uncommitted lint-contract tests).
+- New `stickybar` e2e script at 1280px and 390px, all checks passing: bar clear before scroll, no clipping ancestor, full width, tabs left / badge right in one row, red badge links to and focuses the blocking card, no second live region, no pill container, Set chip gone, mark is `"destructive"` with `0 2px` inline, stuck bar frosted with blur and hairline, "Build clear" white bordered, no console errors.
+- `redesign` (104/104) and `fixes` (57/57) still pass. The redesign checks for the white tab pill, the Set chip and the unquoted mark were updated to the new spec.

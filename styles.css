@@ -31,7 +31,7 @@
   --bar-coral: #ff8a7a;     /* hero bar: variants */
   --logo-a: #4146d8;
   --logo-c: #1e2080;
-  --sticky: rgb(244 245 249 / 0.88);
+  --sticky: rgb(244 245 249 / 0.85);
   --hover-row: #fafafe;
   --swatch-edge: rgb(18 20 51 / 0.1);
   --drawn-edge: rgb(18 20 51 / 0.08);
@@ -264,24 +264,33 @@ a.status--blocked:hover { background: var(--red-text); border-color: var(--red-t
 .anatomy__pill text { font: 600 10px var(--mono); fill: var(--on-indigo); }
 
 /* ---------- Sticky tabs ---------- */
-.bar { position: sticky; top: 0; z-index: 2; margin-top: 24px; padding: 12px 0; background: var(--sticky); backdrop-filter: blur(8px); }
+/* A full-width bar. Clear until it sticks, so the hero's shadow falls onto the page without a hard edge;
+   once stuck (app.js sets .is-stuck) it frosts and gets a hairline. */
+.bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  margin-top: 24px;
+  padding: 10px 0;
+  border-bottom: 1px solid transparent;
+  transition: background-color var(--motion), border-color var(--motion);
+}
+.bar.is-stuck { background: var(--sticky); border-bottom-color: var(--hairline); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.bar__inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.bar__status { flex: none; }
 .steps {
-  display: inline-flex;
+  display: flex;
   gap: 4px;
   margin: 0;
-  padding: 4px;
+  padding: 0;
   list-style: none;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
 }
 .steps a {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 8px 14px;
-  border-radius: 9px;
+  border-radius: 10px;
   color: var(--body);
   font-weight: 600;
   text-decoration: none;
@@ -399,7 +408,7 @@ h3 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0; }
 
 /* One line of code scrolls rather than wraps; when it overflows, app.js shows the cue and makes it keyboard-scrollable. */
 .snippet { padding: 12px 16px; background: var(--code); border: 1px solid var(--hairline); border-radius: 10px; color: var(--ink); overflow-x: auto; white-space: pre; }
-.snippet mark { padding: 1px 3px; border-radius: 4px; background: var(--red-tint); color: var(--red-text); font-weight: 600; }
+.snippet mark { display: inline; padding: 0 2px; border-radius: 3px; background: var(--red-tint); color: var(--red-text); font-weight: 600; }
 .snippet__more { margin-top: -8px; }
 
 .why { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; }
@@ -640,9 +649,15 @@ h3 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0; }
   .hero__bars li { grid-template-columns: 112px minmax(0, 1fr) 20px; }
   .hero__watermark { font-size: 88px; bottom: -18px; }
   /* Tabs: a 4-up grid, icon over label. */
-  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
-  .steps a { flex-direction: column; gap: 2px; padding: 8px 2px; font-size: 12px; text-align: center; }
-  .steps__count { padding: 0 6px; font-size: 11px; }
+  .bar__inner { gap: 8px; }
+  .bar nav { flex: 1; min-width: 0; }
+  .steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; gap: 2px; }
+  /* The bar's badge shrinks to its icon and count; the label stays for screen readers. */
+  .bar__status .status { padding: 8px 10px; gap: 4px; }
+  .bar__status .status strong { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .steps a { position: relative; flex-direction: column; gap: 2px; padding: 8px 2px; font-size: 12px; text-align: center; }
+  /* The count rides on the icon's corner, so each tab stays two lines (icon, label). */
+  .steps__count { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; padding: 0 5px; font-size: 10px; line-height: 16px; }
   .dial { grid-template-columns: auto minmax(0, 1fr); padding: 16px; }
   .dial__options { grid-column: 1 / -1; }
   .review__band { grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; padding: 16px; }

@@ -47,10 +47,13 @@ function render(fallback) {
   const pending = reviewQueue(session); // blocked first
   const open = followUps(session).length;
   const status = view.status(buildStatus(session), pending[0]?.id);
-  if (status !== lastStatus) $('#status').innerHTML = lastStatus = status; // live region: only on change
+  if (status !== lastStatus) {
+    $('#status').innerHTML = lastStatus = status; // live region: only on change
+    $('#bar-status').innerHTML = view.status(buildStatus(session), pending[0]?.id, 'bar');
+  }
   // Carry the current tab across the re-render, so its fill doesn't re-animate from nothing on every render.
   const currentStep = $('#steps a[aria-current]')?.dataset.step;
-  $('#steps').innerHTML = view.steps({ rules: session.rules.length, decide: pending.length, followUps: open, logged: session.log.length }, currentStep);
+  $('#steps').innerHTML = view.steps({ decide: pending.length, followUps: open, logged: session.log.length }, currentStep);
   $('#stats').innerHTML = view.stats(session);
   $('#hero').innerHTML = view.hero(session);
   $('#dials').innerHTML = view.dials(session);
@@ -83,8 +86,11 @@ function setBarClearance() {
   document.documentElement.style.setProperty('--bar-clearance', `${$('.bar').offsetHeight + gap}px`);
 }
 
-// The tab for the section under the sticky bar gets aria-current.
+// The tab for the section under the sticky bar gets aria-current. Once the bar has stuck to the top,
+// it gets its frosted background and hairline; before that it's clear, so the hero's shadow shows through.
 function markCurrentStep() {
+  const bar = $('.bar');
+  bar.classList.toggle('is-stuck', window.scrollY > 0 && bar.getBoundingClientRect().top <= 0);
   const line = $('.bar').getBoundingClientRect().bottom + 1;
   let current = null;
   for (const link of document.querySelectorAll('#steps a[data-step]')) {

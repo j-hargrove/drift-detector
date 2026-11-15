@@ -43,11 +43,12 @@ const amendLines = (changes) =>
   changes.map((c) => `<span class="change"><span class="change__mark" aria-hidden="true">+</span> ${change(c)}</span>`).join('');
 
 // While blocked, the badge links to the first blocking card. It shows "Build blocked · N";
-// screen readers get the full sentence instead of the bare count.
-export function status({ blocked, blockedCount }, firstBlockedId) {
+// screen readers get the full sentence instead of the bare count. The header and the sticky bar
+// each carry one; `place` keeps their focus keys apart.
+export function status({ blocked, blockedCount }, firstBlockedId, place = 'header') {
   const sentence = `${blockedCount === 1 ? '1 blocked deviation needs' : `${blockedCount} blocked deviations need`} a decision`;
   return blocked
-    ? `<a class="status status--blocked" href="#review-${esc(firstBlockedId)}" data-blocked-link="${esc(firstBlockedId)}" data-focus="status-link">${icon('octagon', 16)}<strong>Build blocked</strong> <span class="status__count" aria-hidden="true">· ${blockedCount}</span><span class="sr-only">${sentence}</span></a>`
+    ? `<a class="status status--blocked" href="#review-${esc(firstBlockedId)}" data-blocked-link="${esc(firstBlockedId)}" data-focus="status-link:${place}">${icon('octagon', 16)}<strong>Build blocked</strong> <span class="status__count" aria-hidden="true">· ${blockedCount}</span><span class="sr-only">${sentence}</span></a>`
     : `<div class="status">${icon('checkCircle', 16)}<strong>Build clear</strong><span class="sr-only">No blocked deviations</span></div>`;
 }
 
@@ -170,9 +171,10 @@ export function dials(session) {
 }
 
 // Set · Decide · Follow-ups · Record, as in-page links with icons and live count chips.
-export function steps({ rules, decide, followUps, logged }, current) {
+// Set has no chip: its count (the number of rules) never needs attention.
+export function steps({ decide, followUps, logged }, current) {
   const items = [
-    ['dials-title', 'Set', 'sliders', rules],
+    ['dials-title', 'Set', 'sliders', null],
     ['queue-title', 'Decide', 'scale', decide],
     ['follow-title', 'Follow-ups', 'listCheck', followUps],
     ['log-title', 'Record', 'book', logged],
@@ -180,7 +182,7 @@ export function steps({ rules, decide, followUps, logged }, current) {
   return items
     .map(
       ([id, label, glyph, n]) =>
-        `<li><a href="#${id}" data-step="${id}" data-focus="step:${id}"${id === current ? ' aria-current="location"' : ''}>${icon(glyph)}<span class="steps__label">${label}</span><span class="steps__count">${n}</span></a></li>`,
+        `<li><a href="#${id}" data-step="${id}" data-focus="step:${id}"${id === current ? ' aria-current="location"' : ''}>${icon(glyph)}<span class="steps__label">${label}</span>${n === null ? '' : `<span class="steps__count">${n}</span>`}</a></li>`,
     )
     .join('');
 }
@@ -259,6 +261,7 @@ function collapsedCard(session, d) {
 }
 
 // The offending value, marked in the snippet: the hex, the off-scale px, or the variant name.
+// A quoted value is marked with its quotes ("destructive", '20px').
 function highlighted(d, contract) {
   const { snippet, rule } = d;
   let match = null;
@@ -272,8 +275,13 @@ function highlighted(d, contract) {
     match = [...snippet.matchAll(/(\d+(?:\.\d+)?)px\b/g)].find((m) => !scale.includes(Number(m[1]))) ?? null;
   }
   if (!match) return esc(snippet);
-  const at = match.index;
-  const text = match[0];
+  let at = match.index;
+  let text = match[0];
+  const quote = snippet[at - 1];
+  if (quote && `"'\``.includes(quote) && snippet[at + text.length] === quote) {
+    at -= 1;
+    text = quote + text + quote;
+  }
   return `${esc(snippet.slice(0, at))}<mark>${esc(text)}</mark>${esc(snippet.slice(at + text.length))}`;
 }
 
