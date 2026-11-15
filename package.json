@@ -4,9 +4,14 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "serve": "python3 -m http.server 8000"
+    "serve": "python3 -m http.server 8000",
+    "lint:contract": "node scripts/lint-contract.js"
   },
   "devDependencies": {
+    "@babel/parser": "^8.1.2",
+    "postcss": "^8.5.33",
+    "stylelint": "^18.0.0",
+    "stylelint-declaration-strict-value": "^1.13.0",
     "vitest": "^5.0.5"
   }
 }

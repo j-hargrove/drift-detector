@@ -1,0 +1,5 @@
+.button {
+  padding: 10px;
+  margin: 0 16px;
+  gap: var(--space-2);
+}
