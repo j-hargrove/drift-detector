@@ -35,8 +35,13 @@ describe('flagTitle', () => {
     expect(flagTitle(d, contract)).toMatch(/^Padding 10px/);
   });
 
-  it('names an off-contract variant', () => {
-    expect(flagTitle(seed['dev-005'], contract)).toBe('Button has no “destructive” variant');
+  it('names an off-contract variant and the element’s label', () => {
+    expect(flagTitle(seed['dev-005'], contract)).toBe('Button has no “destructive” variant · Delete account');
+  });
+
+  it('leaves the label off when the element has none', () => {
+    const d = dev({ rule: 'no-off-contract-variant', snippet: '<Button variant="outline" />', suggestedToken: 'variant="secondary"' });
+    expect(flagTitle(d, contract)).toBe('Button has no “outline” variant');
   });
 
   it('falls back for unknown rules and unparseable snippets', () => {

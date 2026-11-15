@@ -658,3 +658,19 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 **How it was verified**
 - Every palette hue except red sits between 213° and 224°. A browser sweep of every computed color on the page (text, backgrounds, borders, outlines, shadows, gradients, SVG fill and stroke, every card open, bar stuck) at 1280px and 390px found no hue between 250° and 330°. A grep for every old hex and rgb value in the CSS, HTML and JS finds nothing.
 - 123/123 unit tests. `redesign` 104/104 (expected colors updated; its AA check on all visible text passes), `fixes` 56/56, `stickybar` 32/32.
+
+## Screenshot pass fixes (2026-11-15)
+
+**What changed**
+- **Bar badge only while stuck.** At the top of the page the header badge and the bar badge were both on screen, showing the same status twice. The bar's copy is now hidden until the bar sticks.
+- **Variant titles name the element.** The stress data has two "destructive" flags, and their titles were identical. They now read "Button has no “destructive” variant · Delete account" and "… · Remove user", on cards, collapsed rows and log entries alike.
+- **Log ids don't break.** On desktop "dev-005" split as "dev-" / "005" in the narrow metadata column. The id is now `nowrap`; the line breaks before it instead.
+- **US spelling** in the demo reasons: "centres" → "centers".
+
+**Decisions**
+- **Hidden with `visibility`, not only opacity.** An invisible link that still takes focus would be a keyboard trap with nothing on screen. `visibility: hidden` takes it out of the tab order and the accessibility tree; the header badge stays the one screen readers find. Its space is kept, so the tabs don't shift when it appears.
+- **The label comes from the snippet's element text,** the same text the preview draws on its buttons. With no text (`<Button variant="outline" />`) the title stays as it was.
+
+**How it was verified**
+- 124/124 unit tests (new: the label in the title, and no label when the element has none).
+- `redesign`, `fixes`, `stickybar` and `stress-real` all pass. New browser checks: the bar badge is hidden while unstuck and visible once stuck (1280px and 390px); every log id sits on one line; titles for dev-005, dev-012, dev-013, dev-014 and dev-015 include their labels.

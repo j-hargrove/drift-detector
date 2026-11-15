@@ -524,7 +524,7 @@ export function log(entries, resolving, session) {
         <div class="entry__head">
           <span class="chip chip--decision chip--${esc(e.decision)}">${DECISION_LABEL[e.decision]}</span>
           <p class="meta">${DIAL_LABEL[e.dialSetting]} dial · <time datetime="${esc(e.timestamp)}">${esc(new Date(e.timestamp).toLocaleTimeString())}</time></p>
-          <p class="meta"><code class="loc">${esc(e.file).replace(/\//g, '/<wbr>')}:${esc(e.line)}</code> · <code class="loc">${esc(e.id)}</code></p>
+          <p class="meta"><code class="loc">${esc(e.file).replace(/\//g, '/<wbr>')}:${esc(e.line)}</code> · <code class="loc loc--id">${esc(e.id)}</code></p>
         </div>
         <p class="entry__reason">${e.agentReason ? `“${esc(e.agentReason)}”` : `<span class="warn">${icon('alert', 14)}No reason given</span>`}</p>
         <div class="entry__outcome">

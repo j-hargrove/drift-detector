@@ -282,7 +282,10 @@ a.status--blocked:hover { background: var(--red-text); border-color: var(--red-t
 }
 .bar.is-stuck { background: var(--sticky); border-bottom-color: var(--hairline); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
 .bar__inner { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.bar__status { flex: none; }
+/* The bar's badge copy shows only once the bar is stuck; until then the header badge is in view.
+   visibility (not just opacity) keeps the hidden link out of the tab order and away from screen readers. */
+.bar__status { flex: none; transition: opacity var(--motion), visibility var(--motion); }
+.bar:not(.is-stuck) .bar__status { visibility: hidden; opacity: 0; }
 .steps {
   display: flex;
   gap: 4px;
@@ -623,6 +626,7 @@ h3 { font-size: 14.5px; font-weight: 600; color: var(--ink); margin: 0; }
 .entry__title { grid-column: 1 / -1; font-size: 14.5px; font-weight: 600; color: var(--ink); }
 .entry__head { grid-row: span 2; display: grid; gap: 4px; align-content: start; justify-items: start; min-width: 0; }
 .entry__head .loc { color: var(--muted); font-size: 12px; overflow-wrap: break-word; }
+.entry__head .loc--id { white-space: nowrap; overflow-wrap: normal; }
 .entry__reason { max-width: 64ch; color: var(--ink); }
 .entry__outcome { display: grid; gap: 8px; align-content: start; font-size: var(--fs-meta); overflow-wrap: anywhere; }
 .entry__outcome code { color: var(--ink); }

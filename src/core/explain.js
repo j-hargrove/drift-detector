@@ -8,6 +8,7 @@ import { distance, findColor, parseColor, sameColor } from './colors.js';
 
 const PX = /\b\d+(?:\.\d+)?px\b/g;
 const VARIANT = /variant=["']([^"']+)["']/;
+const CHILDREN = />([^<]+)</;
 const PROPERTY = /^\s*([a-z-]+)\s*:/i;
 
 // Within this RGB distance a color reads as "a shade off" its token.
@@ -64,7 +65,9 @@ export function flagTitle(deviation, contract) {
 
   if (rule === 'no-off-contract-variant') {
     const variant = snippet.match(VARIANT)?.[1];
-    if (variant) return `${component} has no “${variant}” variant`;
+    // The element's own label tells two flags of the same variant apart ("· Delete account", "· Remove user").
+    const text = snippet.match(CHILDREN)?.[1]?.trim();
+    if (variant) return `${component} has no “${variant}” variant${text ? ` · ${text}` : ''}`;
   }
 
   return `This line breaks the rule ${rule}`;
