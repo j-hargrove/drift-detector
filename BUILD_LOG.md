@@ -568,7 +568,7 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - **Dataset logic lives in core with fetch passed in,** so it's unit-tested without a browser.
 - **The orphan reason (`dev-099`) is accepted and ignored,** the same as for an uploaded reasons file.
 
-**Problems the stress set exposed (open, not fixed in this change)**
+**Problems the stress set exposed (fixed in the next change)**
 - **Amend for a non-hex color overflows its button.** For `rgba(37, 99, 235, 0.08)` the proposal falls back to one unbreakable line ("allow \`background: rgba(…);\` under no-hardcoded-color"), which runs past the Amend button at 1280px and is clipped.
 - **A long file path is clipped in the card header at 390px** (`src/features/billing/components/UpgradePlanBannerWithAnnualDiscountCallout.tsx:87`).
 - **The title is wrong when the hard-coded value equals the token:** "Text color #FFFFFF is a shade off color.surface (#FFFFFF)".
@@ -578,3 +578,29 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - New `stress` e2e script (19 checks, with a stand-in set served only by the harness): default demo, unknown values, stress source line and fetches, upload on top, Reset, a set that fails its checks, and missing files.
 - New `stress-real` e2e script on the real files at 1280px and 390px: 32 of 34 checks pass. It loads, with 15 found and 15 to decide. The badge reads Build blocked · 4, and the hero shows 1.1.0 with bars 6/5/4. Every card opens and every snippet has its marked value. The 5 missing reasons are flagged, and there's no page-wide sideways scroll. Preview tiles are equal height and Reject updates the badge. There are no console errors. The 2 failures are the clipping problems above.
 - `redesign`, `fixes`, `stickybar` and `previews` still pass.
+
+## Stress-data display fixes
+
+**What changed**
+- **Long proposed values wrap inside the button.** A code value over 32 characters may wrap, but only after its spaces and commas. Each run between them is unbreakable, so "no-hardcoded-color" never splits at a hyphen. Short tokens stay `nowrap`, as before. The dev-004 Amend line ("allow \`background: rgba(37, 99, 235, 0.08);\` under no-hardcoded-color") now takes 2 lines inside the button at 1280px.
+- **Long paths are middle-truncated in the header on phones.** `shortPath` keeps the first two folders, then "…", then the file name. A long name is itself cut in the middle: the first 17 and last 7 characters of the stem, plus the extension. The header breaks only after a slash. The full path is in the header's `title`, is what screen readers get, and is shown as a "File" line at the top of the card body. Desktop still shows the full path in the header, and paths of 40 characters or fewer are unchanged at every width.
+- **Same value as the token.** When a hard-coded hex equals the suggested token's value (case and 3-digit shorthand normalised), the title reads "Hard-coded #FFFFFF instead of color.surface (same value)". Reject's consequence adds "The value stays #FFFFFF; only the token reference changes." Before, it read "a shade off color.surface (#FFFFFF)", which claimed a difference that isn't there.
+- **Stress data:** dev-004's `suggestedToken` changed from `color.surface` to `color.primary` at the project owner's request: the nearest allowed color to a primary tint.
+
+**Problems found along the way**
+- **Breaking after an ellipsis.** The first version of the phone header broke after "…" ("UpgradePlanBanner…" / "Callout.tsx:87"), because an ellipsis is a line-break opportunity. So did a hyphen in the Amend line. Wrapping each run in an unbreakable span leaves only the intended break points.
+- **Words running together for screen readers.** The two Reject lines had no space between them in the markup, so the button's text read "color.surfaceThe value stays". There's now a full stop and a space.
+
+**Still open**
+- **dev-004's title is the generic fallback,** "This line breaks the rule no-hardcoded-color", and its Amend is "allow \`…\` under no-hardcoded-color". The explain and proposal code only recognise hex colors, not `rgba()`. Now it wraps instead of clipping, but a plain-language title and an "add rgba(…) to Button.allowedTokens.color" proposal would be better.
+
+**How it was verified**
+- 106/106 unit tests. New ones cover the same-value title (case, shorthand, inline styles), `sameValueAsToken` (the token and value Reject shows; null for a near miss, another token, an unknown token, `rgba()` and a non-color rule), the stress set's dev-006, and `shortPath`.
+- `stress-real` on the real files at 1280px and 390px, 44/44:
+  - dev-004 Amend wraps inside its button, and every short token is still `nowrap`.
+  - dev-004 Reject is `color.primary`.
+  - dev-006's header is shortened at 390px, with the full path in `title` and the body. At 1280px it shows in full, with no body line.
+  - Short paths get no `title` or body line.
+  - dev-006's title and Reject text are right, and the button's text has no run-together words.
+  - Nothing is clipped anywhere.
+- `redesign` 104/104, `fixes` 56/56, `previews` 174/174, `stickybar` 32/32, `stress` 19/19.

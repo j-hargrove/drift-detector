@@ -36,6 +36,8 @@ export function flagTitle(deviation, contract) {
   if (rule === 'no-hardcoded-color') {
     const hex = snippet.match(HEX)?.[0]?.toUpperCase();
     if (hex) {
+      const same = sameValueAsToken(deviation, contract);
+      if (same) return `Hard-coded ${hex} instead of ${suggestedToken} (same value)`;
       const named = tokenWithValue(contract, 'color', hex);
       if (named) return `${label ?? 'Color'} ${hex} is ${named}, which ${component} doesn’t use`;
       const target = resolveToken(contract, suggestedToken);
@@ -90,6 +92,40 @@ export function flagRule(deviation, contract) {
     return `${component} comes in ${list(variants)}. Any other variant has no agreed design, so nobody has decided how it should look or behave.`;
   }
   return `The lint rule ${deviation.rule} flagged this line. The contract doesn’t describe this rule.`;
+}
+
+// When a hard-coded color is exactly its suggested token's value (#FFFFFF for color.surface),
+// Reject changes nothing on screen, only the reference. Returns { token, value }, or null.
+export function sameValueAsToken(deviation, contract) {
+  if (deviation.rule !== 'no-hardcoded-color') return null;
+  const hex = deviation.snippet.match(HEX)?.[0];
+  const target = resolveToken(contract, deviation.suggestedToken);
+  if (!hex || !HEX.test(String(target ?? ''))) return null;
+  return fullHex(hex) === fullHex(target) ? { token: deviation.suggestedToken, value: fullHex(target) } : null;
+}
+
+// A long path shortened in the middle for a narrow header: the first two folders, an ellipsis,
+// and the file name (itself shortened in the middle if long). Short paths come back unchanged.
+// "src/features/billing/components/UpgradePlanBannerWithAnnualDiscountCallout.tsx"
+//   -> "src/features/…/UpgradePlanBanner…Callout.tsx"
+export function shortPath(path, { max = 40, name = 28 } = {}) {
+  const text = String(path);
+  if (text.length <= max) return text;
+  const parts = text.split('/');
+  let file = parts.pop();
+  if (file.length > name) {
+    const dot = file.lastIndexOf('.');
+    const [stem, ext] = dot > 0 ? [file.slice(0, dot), file.slice(dot)] : [file, ''];
+    file = `${stem.slice(0, 17)}…${stem.slice(-7)}${ext}`;
+  }
+  const head = parts.slice(0, 2);
+  return [...head, ...(parts.length > head.length ? ['…'] : []), file].join('/');
+}
+
+function fullHex(value) {
+  let h = String(value).replace('#', '').toUpperCase();
+  if (h.length === 3 || h.length === 4) h = [...h].map((c) => c + c).join('');
+  return `#${h}`;
 }
 
 function propertyLabel(snippet) {

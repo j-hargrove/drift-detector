@@ -31,7 +31,7 @@
       "file": "src/components/IconButton.tsx",
       "line": 9,
       "snippet": "background: rgba(37, 99, 235, 0.08);",
-      "suggestedToken": "color.surface"
+      "suggestedToken": "color.primary"
     },
     {
       "id": "dev-005",

@@ -3,7 +3,7 @@
 import { DIALS, amendNeedsNote, autoAbsorbed, buildStatus, heldForReview, isDecided, reviewQueue } from '../core/session.js';
 import { proposeChanges, resolveToken } from '../core/proposals.js';
 import { preview } from '../core/preview.js';
-import { flagRule, flagTitle } from '../core/explain.js';
+import { flagRule, flagTitle, sameValueAsToken, shortPath } from '../core/explain.js';
 import { DATASETS } from '../core/datasets.js';
 import { icon, ruleIcon } from './icons.js';
 
@@ -33,10 +33,22 @@ const ruleLabel = (rule) => RULE_LABEL[rule] ?? rule;
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
 // A contract change as words and code tokens: add <code>color.danger</code> to <code>Button.allowedTokens.color</code>.
-// Code tokens don't wrap (CSS), so a line can only break at a space, before a token, never inside one.
+// Short code tokens don't wrap (CSS), so a line breaks at a space between tokens, never inside one.
+// A long value (over 32 characters, e.g. a whole rgba() declaration) would overflow its button, so it
+// may wrap after its spaces and commas.
+const LONG_CODE = 32;
+// Each run between break points is unbreakable (.nobr), so text wraps only where `<wbr>` or a space allows,
+// never at a hyphen or an ellipsis.
+const breakAfter = (text, chars) =>
+  String(text)
+    .split(' ')
+    .map((word) => word.split(new RegExp(`(?<=[${chars}])`)).map((run) => `<span class="nobr">${esc(run)}</span>`).join('<wbr>'))
+    .join(' ');
+const codeSpan = (text) =>
+  String(text).length > LONG_CODE ? `<code class="code--wrap">${breakAfter(text, ',')}</code>` : `<code>${esc(text)}</code>`;
 export function change(text) {
   const m = /^add (.+) to (\S+)$/.exec(text);
-  return m ? `add <code>${esc(m[1])}</code> to <code>${esc(m[2])}</code>` : `<code>${esc(text)}</code>`;
+  return m ? `add ${codeSpan(m[1])} to ${codeSpan(m[2])}` : codeSpan(text);
 }
 // Consequence lines: "+" per contract change for Amend, "→" for Reject. The marks are visual;
 // screen readers get words instead.
@@ -292,7 +304,16 @@ function card(session, d, note, error, collapsible) {
   const base = `review-${esc(d.id)}`;
   const noteId = `${base}-note`;
   const amendBlocked = needsNote && !note.trim();
-  const rejectEffect = `<span class="change"><span class="change__mark" aria-hidden="true">→</span><span class="sr-only">Code becomes</span> <code>${esc(d.suggestedToken)}</code>${resolved ? ` <code>${esc(resolved)}</code>` : ''}</span>`;
+  // When the hard-coded value already equals the token's, Reject only swaps the literal for the reference.
+  const same = sameValueAsToken(d, session.contract);
+  const rejectEffect = same
+    ? `<span class="change"><span class="change__mark" aria-hidden="true">→</span><span class="sr-only">Code becomes</span> <code>${esc(same.token)}</code>.</span> <span class="change change--note">The value stays <code>${esc(same.value)}</code>; only the token reference changes.</span>`
+    : `<span class="change"><span class="change__mark" aria-hidden="true">→</span><span class="sr-only">Code becomes</span> <code>${esc(d.suggestedToken)}</code>${resolved ? ` <code>${esc(resolved)}</code>` : ''}</span>`;
+  // A long path is shortened in the middle in the header (full path in its title, and in the body on phones).
+  const loc = `${d.file}:${d.line}`;
+  const shortLoc = `${shortPath(d.file)}:${d.line}`;
+  const truncated = shortLoc !== loc;
+  const slashBreaks = (text) => breakAfter(text, '/');
   const amendEffect = amendLines(proposeChanges(d, session.contract));
 
   const reason = d.agentReason
@@ -307,10 +328,15 @@ function card(session, d, note, error, collapsible) {
           <p class="review__kicker">${dialChip(session, d)}<span class="label">${esc(ruleLabel(d.rule))}</span></p>
           <h3 class="review__title" id="${base}-title">${esc(flagTitle(d, session.contract))}</h3>
         </div>
-        <p class="review__loc"><code>${esc(d.file)}:${esc(d.line)}</code></p>
+        ${
+          truncated
+            ? `<p class="review__loc review__loc--long" title="${esc(loc)}"><code class="loc--full">${esc(loc)}</code><code class="loc--short" aria-hidden="true">${slashBreaks(shortLoc)}</code></p>`
+            : `<p class="review__loc"><code>${esc(loc)}</code></p>`
+        }
         ${collapsible ? `<button type="button" class="review__collapse" data-collapse="${esc(d.id)}" data-focus="collapse:${esc(d.id)}" aria-expanded="true" aria-label="Collapse">${icon('chevronUp', 20)}</button>` : ''}
       </div>
       <div class="review__body">
+        ${truncated ? `<p class="review__path" aria-hidden="true"><span class="label">File</span> <code>${slashBreaks(loc)}</code></p>` : ''}
         ${heldForReview(session, d) ? `<p class="review__held">${icon('alert', 16)}<span>No agent reason, so a person has to decide.</span></p>` : ''}
         <pre class="snippet" data-snippet><code>${highlighted(d, session.contract)}</code></pre>
         <p class="meta snippet__more" hidden>The line continues. Scroll sideways to read it all.</p>

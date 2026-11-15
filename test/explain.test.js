@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { flagRule, flagTitle } from '../src/core/explain.js';
+import { flagRule, flagTitle, sameValueAsToken, shortPath } from '../src/core/explain.js';
 
 const load = (name) => JSON.parse(readFileSync(new URL(`../data/${name}.json`, import.meta.url)));
 const contract = load('contract');
@@ -44,6 +44,57 @@ describe('flagTitle', () => {
     expect(flagTitle(dev({ rule: 'no-hardcoded-color', snippet: 'color: red;' }), contract)).toBe(
       'This line breaks the rule no-hardcoded-color',
     );
+  });
+});
+
+describe('a hard-coded value equal to its suggested token', () => {
+  const white = dev({ rule: 'no-hardcoded-color', snippet: 'color: #FFFFFF;', suggestedToken: 'color.surface' });
+
+  it('is titled "Hard-coded … instead of … (same value)", not "a shade off"', () => {
+    expect(flagTitle(white, contract)).toBe('Hard-coded #FFFFFF instead of color.surface (same value)');
+  });
+
+  it('matches regardless of case and 3-digit shorthand', () => {
+    for (const snippet of ['color: #ffffff;', 'color: #fff;', "style={{ color: '#FfF' }}"]) {
+      const d = { ...white, snippet };
+      expect(flagTitle(d, contract)).toBe(`Hard-coded ${snippet.match(/#[0-9a-f]+/i)[0].toUpperCase()} instead of color.surface (same value)`);
+      expect(sameValueAsToken(d, contract)).toEqual({ token: 'color.surface', value: '#FFFFFF' });
+    }
+  });
+
+  it('gives Reject the token and the unchanged value', () => {
+    expect(sameValueAsToken(white, contract)).toEqual({ token: 'color.surface', value: '#FFFFFF' });
+  });
+
+  it('is null for a near miss, a different token, a non-hex value or another rule', () => {
+    expect(sameValueAsToken(seed['dev-001'], contract)).toBeNull(); // #3B82F6 vs #2563EB
+    expect(sameValueAsToken({ ...white, suggestedToken: 'color.text' }, contract)).toBeNull();
+    expect(sameValueAsToken({ ...white, snippet: 'background: rgba(255, 255, 255, 1);' }, contract)).toBeNull();
+    expect(sameValueAsToken({ ...white, suggestedToken: 'color.nope' }, contract)).toBeNull();
+    expect(sameValueAsToken(seed['dev-003'], contract)).toBeNull();
+  });
+
+  it('leaves near-miss titles as they were', () => {
+    expect(flagTitle(seed['dev-001'], contract)).toBe('Fill #3B82F6 is a shade off color.primary (#2563EB)');
+  });
+
+  it('covers the stress set’s dev-006', () => {
+    const stress = JSON.parse(readFileSync(new URL('../data/stress/contract.json', import.meta.url)));
+    const report = JSON.parse(readFileSync(new URL('../data/stress/lint-report.json', import.meta.url)));
+    const d = report.deviations.find((x) => x.id === 'dev-006');
+    expect(flagTitle(d, stress)).toBe('Hard-coded #FFFFFF instead of color.surface (same value)');
+  });
+});
+
+describe('shortPath', () => {
+  it('shortens a long path in the middle, and a long file name in its middle', () => {
+    expect(shortPath('src/features/billing/components/UpgradePlanBannerWithAnnualDiscountCallout.tsx')).toBe('src/features/…/UpgradePlanBanner…Callout.tsx');
+  });
+  it('leaves short paths alone', () => {
+    for (const p of ['src/pages/Settings.tsx', 'src/components/IconButton.tsx', 'a.tsx']) expect(shortPath(p)).toBe(p);
+  });
+  it('keeps a long file name in a shallow folder', () => {
+    expect(shortPath('src/AVeryLongComponentNameThatGoesOnAndOnForever.tsx')).toBe('src/AVeryLongComponen…Forever.tsx'); // 17 + … + 7 characters of the stem
   });
 });
 
