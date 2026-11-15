@@ -591,7 +591,7 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 - **Breaking after an ellipsis.** The first version of the phone header broke after "…" ("UpgradePlanBanner…" / "Callout.tsx:87"), because an ellipsis is a line-break opportunity. So did a hyphen in the Amend line. Wrapping each run in an unbreakable span leaves only the intended break points.
 - **Words running together for screen readers.** The two Reject lines had no space between them in the markup, so the button's text read "color.surfaceThe value stays". There's now a full stop and a space.
 
-**Still open**
+**Still open (fixed in the next change)**
 - **dev-004's title is the generic fallback,** "This line breaks the rule no-hardcoded-color", and its Amend is "allow \`…\` under no-hardcoded-color". The explain and proposal code only recognise hex colors, not `rgba()`. Now it wraps instead of clipping, but a plain-language title and an "add rgba(…) to Button.allowedTokens.color" proposal would be better.
 
 **How it was verified**
@@ -604,3 +604,22 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
   - dev-006's title and Reject text are right, and the button's text has no run-together words.
   - Nothing is clipped anywhere.
 - `redesign` 104/104, `fixes` 56/56, `previews` 174/174, `stickybar` 32/32, `stress` 19/19.
+
+## rgb() and rgba() colors
+
+**What changed**
+- **New `src/core/colors.js`** parses hex (3, 4, 6 and 8 digits) and `rgb()`/`rgba()` (comma or space syntax, alpha as a number or a percentage) into channels and alpha. Explain, proposals and preview all use it, replacing three separate hex-only regexes.
+- **Titles.** A see-through color near its token reads "Fill rgba(37,99,235,0.08) is a tint of color.primary". An opaque `rgb()` gets the same titles as hex: same value, another token, a shade off, or not a color.
+- **Amend** adds the color as written: "add rgba(37, 99, 235, 0.08) to Button.allowedTokens.color". Hex is still uppercased.
+- **Swatches** draw on a white chip, as a gradient layer over `#FFFFFF`. An 8% tint shows as it would on a white surface instead of over the preview's dot grid. The same applies to the collapsed row's dots.
+
+**Decisions**
+- **"Tint" means see-through and near the token** (within the same RGB distance used for "a shade off", ignoring alpha). A see-through color far from the token still says it isn't a Button color, rather than claiming a tint relationship.
+- **Titles use the compact form, `rgba(37,99,235,0.08)`; Amend uses the snippet's own text.** The title is prose, where the compact form reads as one value. The Amend line names what goes in the contract, so it matches the code.
+- **Nothing from a snippet reaches a style attribute as written.** The swatch fill is rebuilt from the parsed numbers (`rgba(37, 99, 235, 0.08)`), so a snippet like `rgb(1, 2, 3) url(x)` can't carry anything else in. Tested.
+- **An opaque `rgba(255, 255, 255, 1)` now counts as the same value as `#FFFFFF`.** One earlier test asserted the opposite, because only hex was understood; it now asserts this, plus that a see-through white doesn't match.
+
+**How it was verified**
+- 122/122 unit tests. New `test/colors.test.js` covers every hex length, comma and space syntax, percentage alpha, first match in a line, out-of-range values, opaque-only sameness, and the Amend text for rgba and hex. New explain tests cover the tint title, shade-off, other-token and not-a-color titles for opaque `rgb()`, a far see-through color, and the stress set's dev-004. New preview tests cover the rgba swatch values and that only rebuilt CSS reaches the style attribute.
+- `stress-real` at 1280px and 390px, all passing. dev-004's title is the tint title, its Amend is the rgba line (it fits in the button), and its swatch is the rgba on a white chip, labelled `rgba(37,99,235,0.08)`.
+- `redesign` 104/104, `fixes` 56/56, `previews` 174/174.

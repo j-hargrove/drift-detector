@@ -37,9 +37,21 @@ describe('color preview', () => {
     const p = preview(dev['dev-001'], contract);
     expect(p.kind).toBe('color');
     expect(p.panels.map((x) => x.swatch)).toEqual([
-      { hex: '#3B82F6', name: null },
-      { hex: '#2563EB', name: 'color.primary' },
+      { value: '#3B82F6', css: '#3B82F6', name: null },
+      { value: '#2563EB', css: '#2563EB', name: 'color.primary' },
     ]);
+  });
+
+  it('draws an rgba() as written, its fill rebuilt from the parsed numbers', () => {
+    const d = { ...dev['dev-001'], snippet: 'background: rgba(37,99,235,.08);' };
+    expect(preview(d, contract).panels[0].swatch).toEqual({ value: 'rgba(37,99,235,0.08)', css: 'rgba(37, 99, 235, 0.08)', name: null });
+  });
+
+  it('nothing from an rgb() snippet reaches the style attribute unparsed', () => {
+    for (const snippet of ['background: rgb(1, 2, 3) url(x);', 'background: rgba(1,2,3,0.5);x:expression(1)']) {
+      const css = preview({ ...dev['dev-001'], snippet }, contract).panels[0].swatch.css;
+      expect(css).toMatch(/^rgba?\(\d{1,3}, \d{1,3}, \d{1,3}(, [\d.]+)?\)$/);
+    }
   });
 });
 

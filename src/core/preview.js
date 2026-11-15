@@ -2,8 +2,8 @@
 // what Reject would ship, and what Amend would ship. Pure data; render.js draws it.
 
 import { resolveToken, tokenGroup } from './proposals.js';
+import { findColor } from './colors.js';
 
-const HEX = /#[0-9a-fA-F]{3,8}\b/;
 const PX = /\b(\d+(?:\.\d+)?)px\b/;
 const VARIANT = /variant=["']([^"']+)["']/;
 const CHILDREN = />([^<]+)</;
@@ -47,15 +47,18 @@ function variantPreview(d, contract) {
   };
 }
 
+// Swatches: `value` is the text shown under the chip, `css` the fill (hex, or rgb()/rgba() rebuilt from its
+// parsed numbers, so nothing from the snippet reaches the style attribute as written). render.js draws the
+// fill on a white chip, so a see-through rgba shows as it would on a white surface.
 function colorPreview(d, contract) {
-  const agent = d.snippet.match(HEX)?.[0]?.toUpperCase();
+  const agent = findColor(d.snippet);
   const token = color(resolveToken(contract, d.suggestedToken), null);
   if (!agent || !token) return null;
   return {
     kind: 'color',
     panels: [
-      { label: 'Agent built', caption: 'Kept if you Amend', swatch: { hex: agent, name: null } },
-      { label: 'If you Reject', caption: d.suggestedToken, swatch: { hex: token, name: d.suggestedToken } },
+      { label: 'Agent built', caption: 'Kept if you Amend', swatch: { value: agent.label, css: agent.css, name: null } },
+      { label: 'If you Reject', caption: d.suggestedToken, swatch: { value: token, css: token, name: d.suggestedToken } },
     ],
   };
 }

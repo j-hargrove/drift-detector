@@ -1,6 +1,7 @@
 // What an Amend would change in the contract, derived from the offending snippet.
 
-const HEX = /#[0-9a-fA-F]{3,8}\b/;
+import { findColor } from './colors.js';
+
 const PX = /\b\d+(?:\.\d+)?px\b/g;
 const VARIANT = /variant=["']([^"']+)["']/;
 
@@ -20,8 +21,9 @@ export function proposeChange(deviation, componentName) {
   const { rule, snippet } = deviation;
 
   if (rule === 'no-hardcoded-color') {
-    const hex = snippet.match(HEX)?.[0];
-    if (hex) return `add ${hex.toUpperCase()} to ${componentName}.allowedTokens.color`;
+    // As written for rgb()/rgba() ("rgba(37, 99, 235, 0.08)"); hex uppercased.
+    const found = findColor(snippet);
+    if (found) return `add ${found.text.startsWith('#') ? found.label : found.text} to ${componentName}.allowedTokens.color`;
   }
   if (rule === 'no-arbitrary-spacing') {
     const values = snippet.match(PX);

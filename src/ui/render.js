@@ -249,13 +249,17 @@ const dialChip = (session, d) => {
   return `<span class="chip chip--dial${dial === 'block' ? ' chip--block' : ''}">${DIAL_LABEL[dial]}</span>`;
 };
 
+// A color drawn on a white chip: an opaque color covers it; a see-through rgba() shows as it would
+// on a white surface, not over the preview's dot grid. `css` comes from preview.js (hex or rebuilt rgb).
+const chipFill = (css) => `background: linear-gradient(${esc(css)}, ${esc(css)}), #FFFFFF`;
+
 // A row standing in for an undecided card: icon tile, rule, title, swatches for colors, chevron.
 function collapsedCard(session, d) {
   const base = `review-${esc(d.id)}`;
   const p = preview(d, session.contract);
   const swatches =
     p?.kind === 'color'
-      ? `<span class="row__swatches" aria-hidden="true">${p.panels.map((x) => `<span class="dot" style="background: ${esc(x.swatch.hex)}"></span>`).join('')}</span>`
+      ? `<span class="row__swatches" aria-hidden="true">${p.panels.map((x) => `<span class="dot" style="${chipFill(x.swatch.css)}"></span>`).join('')}</span>`
       : '';
   return `
     <article class="review review--row" id="${base}" tabindex="-1" data-id="${esc(d.id)}" aria-labelledby="${base}-title">
@@ -394,7 +398,7 @@ function drawing(p) {
   if (p.kind === 'variant') tiles = p.panels.map((x) => tile(x, drawnButton(x.button)));
   if (p.kind === 'color') {
     tiles = p.panels.map((x) =>
-      tile(x, `<span class="swatch" style="--btn: ${esc(x.swatch.hex)}; background: ${esc(x.swatch.hex)}"></span><code class="swatch__hex">${esc(x.swatch.hex)}</code>`),
+      tile(x, `<span class="swatch" style="--btn: ${esc(x.swatch.css)}; ${chipFill(x.swatch.css)}"></span><code class="swatch__hex">${esc(x.swatch.value)}</code>`),
     );
   }
   if (p.kind === 'spacing') tiles = p.panels.map((x) => tile(x, spacingArt(p, x)));

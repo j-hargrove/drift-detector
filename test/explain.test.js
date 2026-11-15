@@ -66,10 +66,17 @@ describe('a hard-coded value equal to its suggested token', () => {
     expect(sameValueAsToken(white, contract)).toEqual({ token: 'color.surface', value: '#FFFFFF' });
   });
 
-  it('is null for a near miss, a different token, a non-hex value or another rule', () => {
+  it('counts an opaque rgb()/rgba() of the same color as the same value', () => {
+    for (const snippet of ['background: rgb(255, 255, 255);', 'background: rgba(255, 255, 255, 1);', 'background: rgb(255 255 255);']) {
+      expect(sameValueAsToken({ ...white, snippet }, contract)).toEqual({ token: 'color.surface', value: '#FFFFFF' });
+    }
+    expect(flagTitle({ ...white, snippet: 'color: rgb(255, 255, 255);' }, contract)).toBe('Hard-coded rgb(255,255,255) instead of color.surface (same value)');
+  });
+
+  it('is null for a near miss, a different token, a see-through color, an unknown token or another rule', () => {
     expect(sameValueAsToken(seed['dev-001'], contract)).toBeNull(); // #3B82F6 vs #2563EB
     expect(sameValueAsToken({ ...white, suggestedToken: 'color.text' }, contract)).toBeNull();
-    expect(sameValueAsToken({ ...white, snippet: 'background: rgba(255, 255, 255, 1);' }, contract)).toBeNull();
+    expect(sameValueAsToken({ ...white, snippet: 'background: rgba(255, 255, 255, 0.5);' }, contract)).toBeNull();
     expect(sameValueAsToken({ ...white, suggestedToken: 'color.nope' }, contract)).toBeNull();
     expect(sameValueAsToken(seed['dev-003'], contract)).toBeNull();
   });
@@ -83,6 +90,31 @@ describe('a hard-coded value equal to its suggested token', () => {
     const report = JSON.parse(readFileSync(new URL('../data/stress/lint-report.json', import.meta.url)));
     const d = report.deviations.find((x) => x.id === 'dev-006');
     expect(flagTitle(d, stress)).toBe('Hard-coded #FFFFFF instead of color.surface (same value)');
+  });
+});
+
+describe('rgb() and rgba() colors', () => {
+  const fill = (snippet, suggestedToken = 'color.primary') => dev({ rule: 'no-hardcoded-color', snippet, suggestedToken });
+
+  it('titles a see-through version of the token as a tint of it', () => {
+    expect(flagTitle(fill('background: rgba(37, 99, 235, 0.08);'), contract)).toBe('Fill rgba(37,99,235,0.08) is a tint of color.primary');
+    expect(flagTitle(fill('background: rgb(37 99 235 / 50%);'), contract)).toBe('Fill rgba(37,99,235,0.5) is a tint of color.primary');
+  });
+
+  it('treats an opaque rgb() like hex: shade off, other token, or not a color', () => {
+    expect(flagTitle(fill('background-color: rgb(59, 130, 246);'), contract)).toBe('Fill rgb(59,130,246) is a shade off color.primary (#2563EB)');
+    expect(flagTitle(fill('color: rgb(220, 38, 38);', 'color.text'), contract)).toBe('Text color rgb(220,38,38) is color.danger, which Button doesn’t use');
+    expect(flagTitle(fill('background: rgb(22, 163, 74);'), contract)).toBe('Fill rgb(22,163,74) isn’t a Button color; the fix is color.primary (#2563EB)');
+  });
+
+  it('a see-through color far from the token is not called a tint', () => {
+    expect(flagTitle(fill('background: rgba(22, 163, 74, 0.2);'), contract)).toBe('Fill rgba(22,163,74,0.2) isn’t a Button color; the fix is color.primary (#2563EB)');
+  });
+
+  it('the stress set’s dev-004', () => {
+    const stress = JSON.parse(readFileSync(new URL('../data/stress/contract.json', import.meta.url)));
+    const report = JSON.parse(readFileSync(new URL('../data/stress/lint-report.json', import.meta.url)));
+    expect(flagTitle(report.deviations.find((x) => x.id === 'dev-004'), stress)).toBe('Fill rgba(37,99,235,0.08) is a tint of color.primary');
   });
 });
 
