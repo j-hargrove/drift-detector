@@ -674,3 +674,24 @@ Muted metadata and warning red both pass, but muted has the least headroom (5.00
 **How it was verified**
 - 124/124 unit tests (new: the label in the title, and no label when the element has none).
 - `redesign`, `fixes`, `stickybar` and `stress-real` all pass. New browser checks: the bar badge is hidden while unstuck and visible once stuck (1280px and 390px); every log id sits on one line; titles for dev-005, dev-012, dev-013, dev-014 and dev-015 include their labels.
+
+## Bug: step bar highlighted the previous tab (2026-11-16)
+
+**What happened**
+- Clicking a tab scrolled to the right section but left the previous tab highlighted. A jump landed each heading 16px below the bar (`scroll-padding-top`), while the scroll-spy compared the section's top with the bar's bottom + 1px. The two lines disagreed, so the section above still counted as current.
+
+**What changed**
+- **One offset for both ends.** `navOffset` is the bar's measured height + 8px. It sets `--bar-clearance` (the `scroll-padding-top` a jump lands on), and the scroll-spy reads against the same number.
+- **The spy measures what a jump lands on.** The current tab is the last one whose heading top is at or above the offset + 2px (the 2px absorbs subpixel rounding), not the section's top.
+- **Clicks win while the page scrolls.** A click marks its tab at once and pauses the spy until `scrollend`. The 600ms fallback restarts on every scroll event, so a long smooth scroll isn't cut short, and a click that doesn't scroll still releases. The "Build blocked" badge and confirmation links highlight the tab for the section they point into.
+- **Bottom of the page:** the last tab (Record) is current, since its heading may never reach the bar. A click is still respected there until the next scroll, so Follow-ups stays highlighted even when the page can't scroll its heading to the top.
+- **Smooth scroll** through `scrollIntoView({ behavior: 'smooth' })`, `'auto'` under reduced motion. No custom JS animation.
+
+**Decisions**
+- **`scroll-padding-top` on `html`, not `scroll-margin-top` on each section.** It already existed and covers every in-page target, including cards and log entries; one place to set it.
+- **The browser test is `.e2e.mjs`, not `.spec.mjs`,** because Vitest collects every `*.spec.*` and would try to run a Playwright script as a suite.
+- **The test serves files from disk through Playwright's request routing,** so it needs no local server.
+
+**How it was verified**
+- New `npm run test:nav` (Playwright): clicks each tab in order, in reverse and mixed, at 1280px, at 390px and with reduced motion; checks the highlight immediately, after the scroll settles, and after a 1px nudge. 39/39 pass. The same test against the old code fails 30/39, each settling on the previous tab.
+- 124/124 unit tests.
