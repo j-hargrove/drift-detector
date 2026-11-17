@@ -92,28 +92,70 @@ function markOverflowingSnippets() {
   }
 }
 
-// The sticky bar wraps to two rows on narrow screens; in-page jumps and focus clear its real height.
+// One offset for both ends of an in-page jump: where a jump lands (html scroll-padding-top, via
+// --bar-clearance) and where the scroll-spy reads. The sticky bar wraps on narrow screens, so it's measured.
+let navOffset = 0;
 function setBarClearance() {
-  const gap = 16;
-  document.documentElement.style.setProperty('--bar-clearance', `${$('.bar').offsetHeight + gap}px`);
+  navOffset = $('.bar').offsetHeight + 8;
+  document.documentElement.style.setProperty('--bar-clearance', `${navOffset}px`);
 }
 
-// The tab for the section under the sticky bar gets aria-current. Once the bar has stuck to the top,
-// it gets its frosted background and hairline; before that it's clear, so the hero's shadow shows through.
-function markCurrentStep() {
+// Once the bar has stuck to the top it gets its frosted background and hairline; before that it's clear,
+// so the hero's shadow shows through.
+function markStuck() {
   const bar = $('.bar');
   bar.classList.toggle('is-stuck', window.scrollY > 0 && bar.getBoundingClientRect().top <= 0);
-  const line = $('.bar').getBoundingClientRect().bottom + 1;
-  let current = null;
-  for (const link of document.querySelectorAll('#steps a[data-step]')) {
-    const section = document.getElementById(link.dataset.step)?.closest('section');
-    if (section && section.getBoundingClientRect().top <= line) current = link;
-  }
-  current ??= $('#steps a[data-step]');
+}
+
+function setCurrentStep(current) {
   for (const link of document.querySelectorAll('#steps a[data-step]')) {
     if (link === current) link.setAttribute('aria-current', 'location');
     else link.removeAttribute('aria-current');
   }
+}
+
+// After a tab click the clicked tab is current at once, and the scroll-spy waits until the scroll
+// settles (scrollend, or 600ms without a scroll event), so it can't flip to a section passed on the way.
+let spyPaused = false;
+let spyTimer = 0;
+function pauseSpy() {
+  spyPaused = true;
+  clearTimeout(spyTimer);
+  spyTimer = setTimeout(resumeSpy, 600);
+}
+function resumeSpy() {
+  spyPaused = false;
+  clearTimeout(spyTimer);
+}
+
+// The tab for the section under the sticky bar gets aria-current: the last one whose heading (the
+// element a jump lands on) is at or above the offset. The 2px absorbs subpixel rounding.
+// At the bottom of the page the last tab is current, since its heading may never reach the bar.
+function markCurrentStep() {
+  markStuck();
+  if (spyPaused) {
+    pauseSpy(); // still scrolling: keep waiting
+    return;
+  }
+  const links = [...document.querySelectorAll('#steps a[data-step]')];
+  const atBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 2;
+  let current = null;
+  if (atBottom) current = links.at(-1);
+  else {
+    for (const link of links) {
+      const heading = document.getElementById(link.dataset.step);
+      if (heading && heading.getBoundingClientRect().top <= navOffset + 2) current = link;
+    }
+  }
+  setCurrentStep(current ?? links[0]);
+}
+
+// The tab whose section holds an in-page link's target (a card, a log entry, a heading).
+function stepFor(target) {
+  const section = target.closest('section');
+  return [...document.querySelectorAll('#steps a[data-step]')].find(
+    (link) => document.getElementById(link.dataset.step)?.closest('section') === section,
+  );
 }
 
 function renderData() {
@@ -417,13 +459,19 @@ function bind() {
     const target = document.getElementById(link.getAttribute('href').slice(1));
     if (!target) return;
     e.preventDefault();
+    const step = stepFor(target);
+    if (step) {
+      setCurrentStep(step);
+      pauseSpy();
+    }
     target.focus({ preventScroll: true });
-    target.scrollIntoView({ block: 'start' });
+    target.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' });
     history.replaceState(null, '', link.getAttribute('href'));
   });
   $('#export').addEventListener('click', onExport);
   bindLoader();
   window.addEventListener('scroll', markCurrentStep, { passive: true });
+  window.addEventListener('scrollend', resumeSpy);
   window.addEventListener('resize', () => {
     markOverflowingSnippets();
     setBarClearance();
